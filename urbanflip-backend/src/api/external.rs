@@ -116,12 +116,11 @@ pub async fn verify(
     // The challenge is looked up by the hash of the exact tx we issued, so
     // any change to it fails here; it is single-use either way.
     let issued = state.pending_signatures.challenges.lock().unwrap_or_else(|e| e.into_inner()).remove(&hex::encode(hash));
-    let Some(issued) = issued.filter(|c| c.investor_id == investor_id) else {
-        return Err(err(StatusCode::UNPROCESSABLE_ENTITY, "unknown, used or foreign challenge; request a new one"));
+    // 410: whatever the cause (expired, used, lost in a restart), the
+    // widget's answer is the same: start over with a fresh challenge.
+    let Some(issued) = issued.filter(|c| c.investor_id == investor_id && now_unix() <= c.expires_at) else {
+        return Err(err(StatusCode::GONE, "challenge expired or already used; request a new one"));
     };
-    if now_unix() > issued.expires_at {
-        return Err(err(StatusCode::UNPROCESSABLE_ENTITY, "challenge expired; request a new one"));
-    }
     if !signed_by(&issued.address, &hash, &signatures) {
         return Err(err(StatusCode::UNPROCESSABLE_ENTITY, format!("challenge is not signed by {}", issued.address)));
     }
@@ -231,12 +230,9 @@ pub async fn trustline_submit(
     let (tx, signatures) = decode_tx(&body.signed_xdr)?;
     let hash = x::tx_hash(&state.ops.passphrase, &tx);
     let built = state.pending_signatures.builds.lock().unwrap_or_else(|e| e.into_inner()).remove(&hex::encode(hash));
-    let Some(built) = built.filter(|b| b.investor_id == investor_id && b.deal_id == body.deal_id) else {
-        return Err(err(StatusCode::UNPROCESSABLE_ENTITY, "unknown, used or foreign transaction; request a new one"));
+    let Some(built) = built.filter(|b| b.investor_id == investor_id && b.deal_id == body.deal_id && now_unix() <= b.expires_at) else {
+        return Err(err(StatusCode::GONE, "transaction expired or already used; request a new one"));
     };
-    if now_unix() > built.expires_at {
-        return Err(err(StatusCode::UNPROCESSABLE_ENTITY, "transaction expired; request a new one"));
-    }
     if !signed_by(&built.address, &hash, &signatures) {
         return Err(err(StatusCode::UNPROCESSABLE_ENTITY, format!("transaction is not signed by {}", built.address)));
     }

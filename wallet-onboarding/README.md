@@ -35,9 +35,11 @@ concrete providers are adapters.
                        endSponsoring(source: investor)]  ← must be investor-sourced
 ```
 
-External wallets (Stellar Wallets Kit) skip sponsorship — those users manage
-their own keys and XLM — but arrive on the same pipeline: an (address, raw
-signature) pair is all the backend ever consumes from any wallet.
+External wallets (Freighter, xBull, Albedo, LOBSTR, … via Stellar Wallets Kit)
+keep their own keys. They connect through the embeddable widget in `web/`:
+the investor proves ownership by signing a challenge, then signs the
+trustline transaction that the backend sponsors and submits, so they pay no
+XLM either. See [Wallets Kit widget](#wallets-kit-widget-external-wallets).
 
 ## Guarantees (all tested)
 
@@ -71,7 +73,9 @@ signature) pair is all the backend ever consumes from any wallet.
 ## Run
 
 ```bash
-npm test                    # offline suites (54 tests)
+npm test                    # offline suites (90 tests, incl. 36 for the web widget)
+npm run typecheck           # tsc for the library and for web/
+npm run build:web           # builds the Wallets Kit widget into web/dist/
 npm run demo                # single-investor live walkthrough on testnet
 RUN_LIVE=1 npm run test:live  # 21 sponsored accounts, zero-XLM assertions
 ```
@@ -218,6 +222,229 @@ calls share one lookup and create. `JsonFileWalletDirectory(path)`:
 
 Records written by earlier versions have no `chainType` and are read as
 `solana`. Every earlier wallet was created as a Solana wallet.
+
+## Wallets Kit widget (external wallets)
+
+The investor dashboard (app.urbanflip.io) is built on Bubble, so external
+wallets connect through a self-contained widget: one static page plus one
+JS bundle, shown in an iframe. The investor clicks it, picks a wallet with
+[Stellar Wallets Kit](https://stellarwalletskit.dev)
+(`@creit.tech/stellar-wallets-kit@2.7.1`), proves they own it, and opens a
+sponsored trustline to the deal's participation asset. They never pay XLM.
+
+```
+ Bubble page (app.urbanflip.io)          backend origin (serves /widget/ and /v1/)
+ ─────────────────────────────  ─────────────────────────────────────────────────
+ backend workflow ── POST /v1/investors/{id}/session (private API token) ──► session
+ <iframe src=".../widget/connect.html#investor=…&deal=…&session=…&parent=…">
+                                 [Conectar wallet] → kit modal → address
+                                 POST …/external-wallet/challenge {address}
+                                 [Firmar en mi wallet] → wallet signs challenge_xdr
+                                 POST …/external-wallet/verify {signed_xdr}
+                                 POST …/external-wallet/trustline {deal_id}
+                                   "ready" → done
+                                   "sign"  → [Firmar en mi wallet] → wallet signs xdr
+                                             POST …/trustline/submit {deal_id, signed_xdr}
+ window "message" listener ◄──── postMessage({type: "urbanflip:wallet", status, …}, parent)
+```
+
+### Build and serve
+
+```bash
+npm run build:web     # → web/dist/connect.html, connect.css, connect.js
+```
+
+- `web/dist/` is build output and is git-ignored. Build it in CI or before
+  deploying the backend, then serve the folder at `/widget/` on the same
+  origin as the API. The widget calls `/v1/...` with relative URLs, so there
+  is no CORS.
+- Bundle: `connect.js` is about 266 KiB minified (about 82 KiB gzipped). It
+  includes the kit and its wallet modules. It is an ES module, so it needs a
+  current browser.
+- Source: `web/src/` (`params.ts` reads the fragment, `api.ts` is the backend
+  client, `wallet.ts` adapts the kit, `flow.ts` is the state machine,
+  `ui.ts`/`i18n.ts` render the page, `widget.ts` wires it all up, and
+  `storage-guard.ts` is explained below). The build script is `web/build.mjs`
+  (esbuild) and the tests are in `web/test/`. They run with `npm test`, using
+  jsdom with the kit module and `fetch` mocked.
+
+Suggested response headers for `/widget/*`:
+
+| Header | Value |
+| --- | --- |
+| `Content-Security-Policy` | `frame-ancestors https://app.urbanflip.io` (add the Bubble test domain if needed). Starting point for the rest: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self' https: wss:; frame-src https:`. The kit injects its modal styles at runtime and loads wallet icons from `stellar.creit.tech`. This policy has not been tested against every wallet. |
+| `Referrer-Policy` | `no-referrer` (the page also sets it in a meta tag) |
+| `Cache-Control` | `no-cache` for `connect.html`, so new builds are picked up |
+
+### Widget input (URL fragment)
+
+All input is in the fragment (`#…`), which the browser never sends to a
+server, so the session token stays out of access logs.
+
+| Param | Required | Format |
+| --- | --- | --- |
+| `investor` | yes | `[A-Za-z0-9._~:-]{1,128}` |
+| `deal` | yes | `[A-Za-z0-9._~:-]{1,128}` |
+| `session` | yes | printable ASCII, no spaces, ≤ 4096 chars. Prefer URL-safe tokens (base64url or hex). A literal `+` is kept as `+` |
+| `parent` | yes | the host page's exact origin, e.g. `https://app.urbanflip.io` (no path, no trailing slash). `https` only, plus `http://localhost` for development. This is the only `postMessage` target |
+| `network` | no | `testnet` (default) or `public` |
+| `lang` | no | `es` (default) or `en` |
+
+Values are percent-decoded. If anything is missing or invalid, the page
+shows which params are wrong, makes no API or wallet calls, and, if
+`parent` is valid, posts `status: "error"` with
+`error: "invalid_params: deal, session"`.
+
+### Embedding in Bubble
+
+1. **Session token (server side).** In a backend workflow (API Connector
+   call), call `POST https://<backend>/v1/investors/{investor_id}/session`
+   with the private API token in a header marked *Private*, so that token
+   never reaches the browser. The call returns a short-lived session token
+   for that investor. Store the session token on the page (for example in a
+   custom state).
+2. **The iframe.** Add an HTML element (about 600 px high, full width) with:
+
+   ```html
+   <iframe
+     title="Conectar wallet"
+     src="https://<backend>/widget/connect.html#investor=[investor id]&deal=[deal id]&session=[session token]&network=testnet&parent=https://app.urbanflip.io&lang=es"
+     style="width:100%;height:600px;border:0"></iframe>
+   ```
+
+   Insert the bracketed values as dynamic data. Do not add a `sandbox`
+   attribute: web wallets (Albedo, xBull's web app) open popups, and extension
+   wallets need a normal browsing context.
+3. **The result.** Listen for the message on the page. For example, use the
+   Toolbox plugin: a "JavaScript to Bubble" element (suffix `uf_wallet`,
+   publishing a text value and triggering an event), plus a "Run javascript"
+   action on page load:
+
+   ```js
+   window.addEventListener('message', function (event) {
+     if (event.origin !== 'https://<backend>') return;      // only the widget
+     var m = event.data;
+     if (!m || m.type !== 'urbanflip:wallet') return;
+     bubble_fn_uf_wallet(m.status);                         // "ready" | "cancelled" | "error"
+   });
+   ```
+
+   On `ready`, refresh the investor's data from the backend, which is the
+   source of truth: it linked the address in `verify` and submitted the
+   trustline. Do not treat the browser message as proof.
+
+### Result message
+
+`window.parent.postMessage(message, parent)`. The target origin is always
+the validated `parent` param, never `"*"`.
+
+```ts
+{
+  type: 'urbanflip:wallet',
+  status: 'ready' | 'cancelled' | 'error',
+  investorId: string,
+  dealId: string,
+  address?: string,          // ready: always. cancelled/error: once ownership is proven
+  trustlineTxHash?: string,  // ready, when this run submitted the trustline
+  error?: string,            // error: "<code>: <detail>"
+}
+```
+
+- `ready` is sent once, when the trustline is open (it was already open, or
+  was just submitted). After that the widget is done.
+- `cancelled` (the investor closed the wallet modal or rejected a signature)
+  and `error` can each arrive several times, because the investor can press
+  "Reintentar" / "Try again". After ownership is proven, a retry starts again
+  at the trustline step.
+- Error codes: `invalid_params`, `wrong_network` (the wallet reports another
+  network), `network_mismatch` (the backend's `network_passphrase` differs
+  from `network`), `wrong_account` (the wallet signed with, or the backend
+  reported, a different address), `expired` (expired twice in a row),
+  `unauthorized` (HTTP 401/403, so the session must be refreshed),
+  `backend_error`, `wallet_error`, `internal_error`.
+
+### Backend API contract (as the widget implements it)
+
+All requests are `POST` with a JSON body,
+`Authorization: Bearer <session>`, `credentials: omit`, and a 30 s timeout.
+Errors are non-2xx with body `{"error": string}`.
+
+| # | Endpoint | Body | 200 response |
+| --- | --- | --- | --- |
+| 1 | `/v1/investors/{investor}/external-wallet/challenge` | `{"address": "G..."}` | `{"challenge_xdr": string, "network_passphrase": string, "expires_at": number}` |
+| 2 | `/v1/investors/{investor}/external-wallet/verify` | `{"signed_xdr": string}` | `{"linked": true, "address": string}` |
+| 3 | `/v1/investors/{investor}/external-wallet/trustline` | `{"deal_id": string}` | `{"status": "ready", "address": string}` or `{"status": "sign", "xdr": string, "network_passphrase": string, "expires_at": number}` |
+| 4 | `/v1/investors/{investor}/external-wallet/trustline/submit` | `{"deal_id": string, "signed_xdr": string}` | `{"status": "submitted", "trustline_tx_hash": string}` |
+
+`challenge_xdr` is a SEP-10-style envelope already signed by the server. The
+wallet signs it with `network_passphrase` and the connected address, and it
+is never submitted. `{investor}` is URL-encoded.
+
+What the widget expects beyond the shapes above (the backend should match):
+
+- **`expires_at` is unix seconds.** The widget measures the remaining
+  lifetime against the response's `Date` header, so a wrong device clock does
+  not matter.
+- **Expiry.** A verify or submit that fails with HTTP 410, or with an `error`
+  string containing "expired", counts as expired. So does a challenge or
+  transaction whose `expires_at` passed before the investor pressed sign. In
+  any of these cases the widget fetches a new one once (step 1 for the
+  challenge, step 3 for the trustline). If it expires a second time, the
+  result is `error: "expired: …"`.
+- **Consistency checks.** `verify.address` and a `ready` trustline's
+  `address` must equal the connected address. `network_passphrase` must
+  match the `network` param. Any other response shape gives
+  `backend_error: … unexpected response from server`.
+- **Retries.** The widget repeats calls after an expiry and when the
+  investor retries, so calls 3 and 4 must be idempotent.
+
+### Wallet behaviour
+
+- **Wallets in the modal.** The kit's `defaultModules()` in 2.7.1 lists
+  Albedo, Freighter, Fordefi, Rabet, xBull, LOBSTR, Hana, Klever, OneKey,
+  Bitget, Cactus Link, D'CENT, Scopuly, MetaMask (Stellar snap) and GhostSig.
+  Wallets that are not installed are listed with an "Instalar"/"Install"
+  link. WalletConnect, Ledger, Trezor and HOT need extra configuration and
+  are not included.
+- **One click per signature.** Each signature waits for a click on
+  "Firmar en mi wallet" / "Sign in my wallet". Albedo and xBull's web app
+  open a popup per request, and browsers block popups that are not triggered
+  by a recent click.
+- **Network check.** After connecting and before each signature, the widget
+  asks the wallet for its network (`StellarWalletsKit.getNetwork()`) and stops
+  with `wrong_network` on a mismatch. Freighter, Fordefi, Klever, Bitget,
+  Cactus Link, D'CENT, Scopuly and GhostSig report it. Albedo, Rabet, xBull,
+  LOBSTR, Hana and OneKey do not: Albedo and xBull receive the passphrase
+  with the signing request, while LOBSTR ignores it. For those wallets, a
+  signature made on the wrong network is rejected by `verify`/`submit`, and
+  the error then includes a "check your wallet's network" hint.
+- **Cancellation.** The kit has no single code for it. A cancel is SEP-43
+  code `-4` (Freighter, Albedo), or a message containing "reject", "declin"
+  or "cancel" (xBull's "Request rejected from the wallet"), or "closed the
+  modal" (the kit modal), or "no elements in sequence" (closing xBull's
+  popup). Any other wallet failure is `wallet_error`.
+- **Signer check.** If the wallet reports `signerAddress` and it differs
+  from the connected address, the widget stops with `wrong_account`.
+- **Blocked storage.** The kit reads `localStorage` while it loads. In a
+  third-party iframe with blocked storage, that read throws and the bundle
+  would not start. `storage-guard.ts` runs first and swaps in an in-memory
+  store, so the only effect is that the kit forgets the last-used wallet.
+- **Language.** The kit's own modal is English-only in 2.7.1: its title is
+  hard-coded and only the install label can be translated. The widget's text
+  is in Spanish or English.
+
+### Not yet verified (needs a browser run with real wallets)
+
+- End-to-end signing with each wallet against the real backend. The tests
+  mock the kit and `fetch`. The built bundle has been loaded in jsdom with
+  the real kit (the modal lists all 15 wallets, no errors), but no real
+  wallet has signed through it yet.
+- How LOBSTR, Rabet, Hana and OneKey word a user rejection. If a wallet's
+  wording is not matched, its rejection shows as `wallet_error`, not
+  `cancelled`.
+- Freighter's behaviour when `networkPassphrase` differs from its active
+  network. It should refuse, and that would surface as `wallet_error`.
+- The CSP above with every wallet.
 
 ## Production notes (out of scope here)
 

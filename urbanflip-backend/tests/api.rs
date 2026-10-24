@@ -507,7 +507,7 @@ async fn an_external_wallet_proves_ownership_and_signs_its_own_sponsored_trustli
     let signed = sign_envelope(c["challenge_xdr"].as_str().unwrap(), &wallet);
     let (status, linked) = wallet_call(&app, &session, "verify", json!({ "signed_xdr": signed })).await;
     assert_eq!((status, linked["address"].as_str()), (200, Some(wallet.public_str().as_str())), "{linked}");
-    assert_eq!(wallet_call(&app, &session, "verify", json!({ "signed_xdr": signed })).await.0, 422, "a challenge is single-use");
+    assert_eq!(wallet_call(&app, &session, "verify", json!({ "signed_xdr": signed })).await.0, 410, "a challenge is single-use");
     let (status, _) = app.post("/v1/investors/inv-b/onboard", json!({ "deal_id": "MADRID" })).await;
     assert_eq!(status, 409, "no embedded wallet for an external-wallet investor");
 

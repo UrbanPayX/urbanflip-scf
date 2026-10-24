@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Urbanflip · Wallet</title>
+  <link rel="stylesheet" href="connect.css">
+  <script type="module" src="connect.js"></script>
+</head>
+<body>
+  <main id="uf-root" class="uf-card" aria-labelledby="uf-title" aria-busy="false">
+    <header class="uf-head">
+      <h1 id="uf-title">Conecta tu wallet de Stellar</h1>
+      <span id="uf-network" class="uf-badge" hidden></span>
+    </header>
+    <p id="uf-lead" class="uf-lead"></p>
+    <ol id="uf-steps" class="uf-steps">
+      <li></li>
+      <li></li>
+      <li></li>
+    </ol>
+    <p id="uf-status" class="uf-status" role="status" aria-live="polite">Cargando… / Loading…</p>
+    <p id="uf-error" class="uf-error" role="alert" hidden></p>
+    <button id="uf-action" class="uf-button" type="button" hidden></button>
+    <p id="uf-footer" class="uf-footer"></p>
+    <noscript><p class="uf-error">Activa JavaScript para conectar tu wallet. / Enable JavaScript to connect your wallet.</p></noscript>
+  </main>
+</body>
+</html>

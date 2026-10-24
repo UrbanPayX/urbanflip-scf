@@ -145,7 +145,7 @@ For crypto-native investors with their own wallet. The embeddable widget
 | --- | --- | --- |
 | `POST /v1/investors/{investor}/session` | — | `201 {session_token, expires_at}` (`operations`) |
 | `POST /v1/investors/{investor}/external-wallet/challenge` | `{"address": "G..."}` | `{challenge_xdr, network_passphrase, expires_at}`: a SEP-10-style tx (sequence 0, so it can never be submitted) for the wallet to sign |
-| `POST /v1/investors/{investor}/external-wallet/verify` | `{"signed_xdr"}` | `{linked, address}`. The challenge is single-use, expires in 5 minutes, and must carry a valid signature by the claimed address (`422` otherwise). `409` if the investor already has an embedded wallet or a different linked wallet |
+| `POST /v1/investors/{investor}/external-wallet/verify` | `{"signed_xdr"}` | `{linked, address}`. The challenge is single-use and expires in 5 minutes (`410`: request a new one), and must carry a valid signature by the claimed address (`422` otherwise). `409` if the investor already has an embedded wallet or a different linked wallet |
 | `POST /v1/investors/{investor}/external-wallet/trustline` | `{"deal_id"}` | `{status: "ready"}` if the trustline exists, else `{status: "sign", xdr, network_passphrase, expires_at}`: a channel-sponsored trustline (and account, if new) for the wallet to sign |
 | `POST /v1/investors/{investor}/external-wallet/trustline/submit` | `{"deal_id", "signed_xdr"}` | `{status: "submitted", trustline_tx_hash}`. Only the tx built for this investor and deal, signed by their wallet, is fee-bumped by the channel and submitted; the investor spends no XLM |
 | `GET /widget/{file}` | — | the built widget, public, with `Content-Security-Policy: frame-ancestors <WIDGET_FRAME_ANCESTORS>` |
