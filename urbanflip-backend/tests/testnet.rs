@@ -65,6 +65,11 @@ async fn testnet_lifecycle() {
         static_gate_allow: vec![(good.clone(), "*".into())],
         sdp_base_url: None,
         sdp_token: None,
+        api_tokens: support::test_api_tokens(),
+        allow_unauthenticated: false,
+        session_ttl_secs: 900,
+        widget_dir: None,
+        widget_frame_ancestors: vec![],
     };
     let app = start_with(config.clone()).await;
 

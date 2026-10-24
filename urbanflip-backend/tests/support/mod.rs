@@ -19,6 +19,7 @@ use stellar_xdr::{
     AccountId, Asset, ChangeTrustAsset, FeeBumpTransactionInnerTx, Limits, MuxedAccount, OperationBody, PublicKey, ReadXdr,
     Transaction, TransactionEnvelope,
 };
+use urbanflip_backend::api::auth::{ApiToken, Role};
 use urbanflip_backend::api::state::{try_build_state, Config, SharedState};
 use urbanflip_backend::stellar::keys::{decode_public, Keypair};
 use urbanflip_backend::stellar::xdr as x;
@@ -172,6 +173,20 @@ fn network_hash<T: stellar_xdr::WriteXdr>(envelope_type: u8, body: &T) -> [u8; 3
     h.update([0, 0, 0, envelope_type]);
     h.update(body.to_xdr(Limits::none()).unwrap());
     h.finalize().into()
+}
+
+/// Adds `signer`'s signature to a v1 envelope, as a wallet would (hashing
+/// independently of the backend).
+pub fn sign_envelope(envelope_b64: &str, signer: &Keypair) -> String {
+    use stellar_xdr::WriteXdr;
+    let TransactionEnvelope::Tx(mut env) = TransactionEnvelope::from_xdr_base64(envelope_b64, Limits::none()).unwrap() else {
+        panic!("expected a v1 envelope");
+    };
+    let hash = network_hash(2, &env.tx);
+    let mut signatures = env.signatures.to_vec();
+    signatures.push(x::decorated(&signer.public_bytes(), signer.sign(&hash)));
+    env.signatures = signatures.try_into().unwrap();
+    TransactionEnvelope::Tx(env).to_xdr_base64(Limits::none()).unwrap()
 }
 
 fn signed_by(address: &str, hash: &[u8; 32], sigs: &[stellar_xdr::DecoratedSignature]) -> bool {
@@ -359,15 +374,47 @@ pub struct App {
     server: tokio::task::JoinHandle<()>,
 }
 
+/// Staff tokens configured in every test app, one per role.
+pub const ADMIN_TOKEN: &str = "test-admin-token";
+pub const OPS_TOKEN: &str = "test-operations-token";
+pub const TREASURY_TOKEN: &str = "test-treasury-token";
+pub const COMPLIANCE_TOKEN: &str = "test-compliance-token";
+pub const READ_TOKEN: &str = "test-read-token";
+
+pub fn test_api_tokens() -> Vec<ApiToken> {
+    use sha2::{Digest, Sha256};
+    [(ADMIN_TOKEN, Role::Admin), (OPS_TOKEN, Role::Operations), (TREASURY_TOKEN, Role::Treasury), (COMPLIANCE_TOKEN, Role::Compliance), (READ_TOKEN, Role::Read)]
+        .into_iter()
+        .map(|(token, role)| ApiToken { name: format!("{role:?}").to_lowercase(), role, sha256: hex::encode(Sha256::digest(token.as_bytes())) })
+        .collect()
+}
+
 impl App {
+    /// As the admin (the default for flow tests).
     pub async fn post(&self, path: &str, body: Value) -> (u16, Value) {
-        let res = self.http.post(format!("{}{path}", self.url)).json(&body).send().await.unwrap();
+        self.post_as(Some(ADMIN_TOKEN), path, body).await
+    }
+
+    pub async fn get(&self, path: &str) -> (u16, Value) {
+        self.get_as(Some(ADMIN_TOKEN), path).await
+    }
+
+    pub async fn post_as(&self, token: Option<&str>, path: &str, body: Value) -> (u16, Value) {
+        let mut req = self.http.post(format!("{}{path}", self.url)).json(&body);
+        if let Some(t) = token {
+            req = req.bearer_auth(t);
+        }
+        let res = req.send().await.unwrap();
         let status = res.status().as_u16();
         (status, res.json().await.unwrap_or(Value::Null))
     }
 
-    pub async fn get(&self, path: &str) -> (u16, Value) {
-        let res = self.http.get(format!("{}{path}", self.url)).send().await.unwrap();
+    pub async fn get_as(&self, token: Option<&str>, path: &str) -> (u16, Value) {
+        let mut req = self.http.get(format!("{}{path}", self.url));
+        if let Some(t) = token {
+            req = req.bearer_auth(t);
+        }
+        let res = req.send().await.unwrap();
         let status = res.status().as_u16();
         (status, res.json().await.unwrap_or(Value::Null))
     }
@@ -442,6 +489,11 @@ impl Env {
             static_gate_allow: vec![("inv-a".into(), "*".into()), ("inv-b".into(), "*".into())],
             sdp_base_url: Some(self.fake.url.clone()),
             sdp_token: Some("test-token".into()),
+            api_tokens: test_api_tokens(),
+            allow_unauthenticated: false,
+            session_ttl_secs: 900,
+            widget_dir: None,
+            widget_frame_ancestors: vec![],
         }
     }
 

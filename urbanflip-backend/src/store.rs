@@ -40,6 +40,9 @@ pub struct Snapshot {
     /// clawback_ref -> clawback, pending or done.
     #[serde(default)]
     pub clawbacks: HashMap<String, ClawbackRecord>,
+    /// investor_id -> external wallet address proven by challenge.
+    #[serde(default)]
+    pub external_wallets: HashMap<String, String>,
     /// investor_id -> sealed wallet secret (dev wallet provider only).
     pub wallets: HashMap<String, String>,
     /// deal_id -> SDP disbursements created so far.

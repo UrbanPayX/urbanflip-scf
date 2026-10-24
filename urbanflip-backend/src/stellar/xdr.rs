@@ -139,6 +139,19 @@ pub fn op_set_trustline_flags(trustor: &[u8; 32], code: &str, issuer: &[u8; 32],
     ))
 }
 
+/// SEP-10-style challenge op: `name` = value, sourced by the client account.
+pub fn op_manage_data(source: &[u8; 32], name: &str, value: &[u8]) -> Result<Operation, String> {
+    let data_name: stellar_xdr::StringM<64> = name.as_bytes().to_vec().try_into().map_err(|_| "data name <= 64 bytes")?;
+    let data_value: stellar_xdr::BytesM<64> = value.to_vec().try_into().map_err(|_| "data value <= 64 bytes")?;
+    Ok(op(
+        Some(source),
+        OperationBody::ManageData(stellar_xdr::ManageDataOp {
+            data_name: stellar_xdr::String64(data_name),
+            data_value: Some(stellar_xdr::DataValue(data_value)),
+        }),
+    ))
+}
+
 pub fn op_payment(destination: &[u8; 32], code: &str, issuer: &[u8; 32], amount_stroops: i64) -> Result<Operation, String> {
     Ok(op(
         None,

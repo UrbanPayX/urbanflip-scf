@@ -57,7 +57,9 @@ only a way to pay in and get paid out:
 ## Running
 
 ```bash
-cargo run                                  # 0.0.0.0:8080, testnet, in-memory state
+ALLOW_UNAUTHENTICATED=true cargo run       # local only: 0.0.0.0:8080, testnet, in-memory state, no auth
+TOKEN=$(openssl rand -hex 32)              # give this to the caller; configure only its hash
+API_TOKENS="[{\"name\":\"bubble\",\"role\":\"operations\",\"sha256\":\"$(printf %s "$TOKEN" | sha256sum | cut -d' ' -f1)\"}]" \
 STATE_PATH=./data/state.json STATE_KEY=$(openssl rand -hex 32) \
 CHANNEL_SECRET=S... STATIC_GATE_ALLOW='[["inv-1","*"]]' cargo run
 ```
@@ -79,10 +81,39 @@ CHANNEL_SECRET=S... STATIC_GATE_ALLOW='[["inv-1","*"]]' cargo run
 | `SPV_IBAN` | sample | default off-ramp target |
 | `SDP_BASE_URL`, `SDP_TOKEN` | — | self-hosted SDP; without them, `sdp/disburse` returns `501` and files come from `payouts/split` |
 | `BIND_ADDR` | `0.0.0.0:8080` | listen address |
+| `API_TOKENS` | — | staff tokens: `[{"name", "role", "sha256"}]` (see [Access control](#access-control)). Without any, startup is refused |
+| `ALLOW_UNAUTHENTICATED` | — | `true` serves every route without a token. Local development only |
+| `SESSION_TTL_SECS` | `900` | lifetime of investor session tokens |
+| `WIDGET_DIR` | — | built wallet widget (`wallet-onboarding/web/dist`), served at `/widget/` |
+| `WIDGET_FRAME_ANCESTORS` | none | origins allowed to frame the widget, e.g. `https://app.urbanflip.io` |
 
 The state file is written atomically (temp file, fsync, rename, mode 0600)
 after every mutation. Back it up together with `STATE_KEY`, but store them
 separately; either one alone is useless.
+
+## Access control
+
+Every call except `/healthz` and `/widget/*` needs `Authorization: Bearer
+<token>`; a missing or unknown token gets `401`, a token whose role doesn't
+cover the route gets `403`. Only each token's SHA-256 is configured, and it
+is compared in constant time. Every route has an explicit policy, and a route
+without one is refused, so a new route can't ship open by mistake. Every
+state-changing call is written to the audit log as `API_CALL` with the
+caller's name and the response status.
+
+| role | may call |
+| --- | --- |
+| `admin` | everything |
+| `operations` | ledgers, issuer provisioning, profiles, onboarding, investor sessions, subscriptions, settle, distributions, authorize, eligibility, trustline checks |
+| `treasury` | off-ramp build/complete/top-up, payouts split, SDP disbursement, eligibility, trustline checks |
+| `compliance` | authorize, freeze, clawback, eligibility, trustline checks, audit |
+| `read` | eligibility, trustline checks, audit |
+
+**Investor sessions.** A browser must never hold a staff token. The investor
+app's backend (a Bubble backend workflow with a private `operations` token)
+calls `POST /v1/investors/{investor}/session` and passes the returned
+`session_token` to the widget. A session reaches only that investor's
+`external-wallet/*` routes and expires after `SESSION_TTL_SECS`.
 
 ## API
 
@@ -104,6 +135,23 @@ strings (up to 7 decimals).
 | --- | --- | --- |
 | `POST /v1/investors/{investor}/onboard` | `{"deal_id": "MADRID"}` | `{stellarAddress, accountCreationTxHash, trustlineTxHash, zeroXlm}`. A hash is `null` when that step already existed. `409` if the deal's issuer is unconfirmed or the same investor is mid-onboarding |
 | `POST /v1/investors/{investor}/profile` | `{email, subscription_rail: FIAT_WIRE\|USDC_ONCHAIN, payout_rail: FIAT_BANK\|USDC_ONCHAIN, stellar_address, iban?, bank_account_name?, screening_ref?}` | `201`. USDC subscription requires `screening_ref`; bank payout requires IBAN and account name |
+
+### D2: external wallets (Stellar Wallets Kit)
+
+For crypto-native investors with their own wallet. The embeddable widget
+(`wallet-onboarding/web`) drives these; Bubble frames it from `/widget/connect.html`.
+
+| route | body | result |
+| --- | --- | --- |
+| `POST /v1/investors/{investor}/session` | — | `201 {session_token, expires_at}` (`operations`) |
+| `POST /v1/investors/{investor}/external-wallet/challenge` | `{"address": "G..."}` | `{challenge_xdr, network_passphrase, expires_at}`: a SEP-10-style tx (sequence 0, so it can never be submitted) for the wallet to sign |
+| `POST /v1/investors/{investor}/external-wallet/verify` | `{"signed_xdr"}` | `{linked, address}`. The challenge is single-use, expires in 5 minutes, and must carry a valid signature by the claimed address (`422` otherwise). `409` if the investor already has an embedded wallet or a different linked wallet |
+| `POST /v1/investors/{investor}/external-wallet/trustline` | `{"deal_id"}` | `{status: "ready"}` if the trustline exists, else `{status: "sign", xdr, network_passphrase, expires_at}`: a channel-sponsored trustline (and account, if new) for the wallet to sign |
+| `POST /v1/investors/{investor}/external-wallet/trustline/submit` | `{"deal_id", "signed_xdr"}` | `{status: "submitted", trustline_tx_hash}`. Only the tx built for this investor and deal, signed by their wallet, is fee-bumped by the channel and submitted; the investor spends no XLM |
+| `GET /widget/{file}` | — | the built widget, public, with `Content-Security-Policy: frame-ancestors <WIDGET_FRAME_ANCESTORS>` |
+
+A linked wallet becomes the investor's address for authorization, issuance
+and clawback; `onboard` (embedded wallet) is refused for them.
 
 ### Subscriptions and issuance
 

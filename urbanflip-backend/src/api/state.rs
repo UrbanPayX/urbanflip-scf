@@ -38,6 +38,15 @@ pub struct Config {
     pub static_gate_allow: Vec<(String, String)>,
     pub sdp_base_url: Option<String>,
     pub sdp_token: Option<String>,
+    /// Staff bearer tokens (SHA-256 + role). Empty refuses startup unless
+    /// allow_unauthenticated (local development only).
+    pub api_tokens: Vec<crate::api::auth::ApiToken>,
+    pub allow_unauthenticated: bool,
+    pub session_ttl_secs: u64,
+    /// Built widget files (wallet-onboarding/web/dist), served at /widget/.
+    pub widget_dir: Option<String>,
+    /// Origins allowed to frame the widget (e.g. https://app.urbanflip.io).
+    pub widget_frame_ancestors: Vec<String>,
 }
 
 impl Config {
@@ -75,6 +84,16 @@ impl Config {
                 .unwrap_or_default(),
             sdp_base_url: std::env::var("SDP_BASE_URL").ok(),
             sdp_token: std::env::var("SDP_TOKEN").ok(),
+            api_tokens: std::env::var("API_TOKENS")
+                .ok()
+                .map(|raw| serde_json::from_str(&raw).expect("API_TOKENS must be JSON [{\"name\", \"role\", \"sha256\"}, ...]"))
+                .unwrap_or_default(),
+            allow_unauthenticated: std::env::var("ALLOW_UNAUTHENTICATED").is_ok_and(|v| v == "true"),
+            session_ttl_secs: std::env::var("SESSION_TTL_SECS").ok().and_then(|v| v.parse().ok()).unwrap_or(900),
+            widget_dir: std::env::var("WIDGET_DIR").ok(),
+            widget_frame_ancestors: std::env::var("WIDGET_FRAME_ANCESTORS")
+                .map(|v| v.split([' ', ',']).filter(|o| !o.is_empty()).map(str::to_string).collect())
+                .unwrap_or_default(),
         }
     }
 }
@@ -162,6 +181,10 @@ pub struct AppState {
     pub pending_settlements: RwLock<HashMap<String, PendingSettlement>>,
     pub clawbacks: RwLock<HashMap<String, ClawbackRecord>>,
     pub wallets: RwLock<DevWalletProvider>,
+    /// investor_id -> address proven through the ownership challenge.
+    pub external_wallets: RwLock<HashMap<String, String>>,
+    pub sessions: crate::api::auth::Sessions,
+    pub pending_signatures: crate::api::external::PendingSignatures,
     pub disbursements: RwLock<HashMap<String, Vec<serde_json::Value>>>,
     pub audit: RwLock<AuditLog>,
     inflight: Mutex<HashSet<String>>,
@@ -223,6 +246,7 @@ impl AppState {
             settled: self.settled.read().await.clone(),
             pending_settlements: self.pending_settlements.read().await.clone(),
             clawbacks: self.clawbacks.read().await.clone(),
+            external_wallets: self.external_wallets.read().await.clone(),
             wallets: self
                 .wallets
                 .read()
@@ -248,6 +272,14 @@ pub fn build_state(config: Config) -> SharedState {
 }
 
 pub fn try_build_state(config: Config) -> Result<SharedState, String> {
+    if config.api_tokens.is_empty() && !config.allow_unauthenticated {
+        return Err("no API_TOKENS configured; refusing to serve an open API (ALLOW_UNAUTHENTICATED=true for local development)".into());
+    }
+    for token in &config.api_tokens {
+        if hex::decode(token.sha256.trim()).map(|d| d.len()) != Ok(32) {
+            return Err(format!("API token '{}': sha256 must be 64 hex chars", token.name));
+        }
+    }
     let gate = match config.gate_provider.as_str() {
         "urbanflip" => ComplianceGate::urbanflip(
             config.gate_url.as_deref().ok_or("GATE_PROVIDER=urbanflip requires URBANFLIP_GATE_URL")?,
@@ -313,6 +345,9 @@ pub fn try_build_state(config: Config) -> Result<SharedState, String> {
         settled: RwLock::new(snapshot.settled),
         pending_settlements: RwLock::new(snapshot.pending_settlements),
         clawbacks: RwLock::new(snapshot.clawbacks),
+        external_wallets: RwLock::new(snapshot.external_wallets),
+        sessions: Default::default(),
+        pending_signatures: Default::default(),
         wallets: RwLock::new(wallets),
         disbursements: RwLock::new(snapshot.disbursements),
         audit: RwLock::new(AuditLog::new(config.audit_path.clone().map(std::path::PathBuf::from))),

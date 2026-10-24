@@ -5,6 +5,7 @@ mod support;
 
 use serde_json::{json, Value};
 use support::*;
+use urbanflip_backend::stellar::keys::Keypair;
 
 async fn provision(app: &App, deal: &str, code: &str) -> String {
     let (status, body) = app.post(&format!("/v1/deals/{deal}/provision-issuer"), json!({ "asset_code": code })).await;
@@ -418,4 +419,138 @@ async fn sdp_disbursement_is_created_once_per_file() {
     let (status, body) = app.post("/v1/deals/MADRID/sdp/disburse", funded).await;
     assert_eq!(status, 409, "{body}");
     assert_eq!(env.net().sdp_creates.len(), 1);
+}
+
+#[tokio::test]
+async fn every_route_needs_the_right_token() {
+    let env = Env::new(false).await;
+    let app = env.start().await;
+    assert_eq!(app.get_as(None, "/healthz").await.0, 200, "health is public");
+    let provision = |token| app.post_as(token, "/v1/deals/MADRID/provision-issuer", json!({}));
+    assert_eq!(provision(None).await.0, 401);
+    assert_eq!(provision(Some("not-a-token")).await.0, 401);
+    assert_eq!(provision(Some(READ_TOKEN)).await.0, 403, "read-only");
+    assert_eq!(provision(Some(TREASURY_TOKEN)).await.0, 403);
+    assert_eq!(provision(Some(OPS_TOKEN)).await.0, 200);
+
+    // Offboarding is compliance's; payouts are treasury's.
+    assert_eq!(app.post_as(Some(OPS_TOKEN), "/v1/deals/MADRID/clawback/inv-a", json!({})).await.0, 403);
+    assert_eq!(app.post_as(Some(TREASURY_TOKEN), "/v1/deals/MADRID/freeze/inv-a", json!({})).await.0, 403);
+    assert_ne!(app.post_as(Some(COMPLIANCE_TOKEN), "/v1/deals/MADRID/freeze/inv-a", json!({})).await.0, 403);
+    assert_eq!(app.post_as(Some(OPS_TOKEN), "/v1/deals/MADRID/sdp/disburse", json!({ "usdc_funded": "1" })).await.0, 403);
+    assert_eq!(app.get_as(Some(READ_TOKEN), "/v1/audit").await.0, 200);
+    assert_eq!(app.get_as(Some(OPS_TOKEN), "/v1/audit").await.0, 403);
+
+    // An investor session reaches only that investor's wallet endpoints.
+    let (status, session) = app.post_as(Some(OPS_TOKEN), "/v1/investors/inv-a/session", json!({})).await;
+    assert_eq!(status, 201, "{session}");
+    let token = session["session_token"].as_str().unwrap().to_string();
+    let address = Keypair::random().public_str();
+    let challenge = |investor: &str| format!("/v1/investors/{investor}/external-wallet/challenge");
+    assert_eq!(app.post_as(Some(&token), &challenge("inv-a"), json!({ "address": address })).await.0, 200);
+    assert_eq!(app.post_as(Some(&token), &challenge("inv-b"), json!({ "address": address })).await.0, 403);
+    assert_eq!(app.post_as(Some(&token), "/v1/deals/MADRID/provision-issuer", json!({})).await.0, 403);
+    assert_eq!(app.post_as(Some(&token), "/v1/investors/inv-a/session", json!({})).await.0, 403, "no self-renewal");
+
+    // Every state-changing call is audited with its caller.
+    let (_, audit) = app.get_as(Some(READ_TOKEN), "/v1/audit").await;
+    let calls: Vec<(String, u64)> = audit["events"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|e| e["kind"] == "API_CALL" && e["path"] == "/v1/deals/MADRID/provision-issuer")
+        .map(|e| (e["caller"].as_str().unwrap().to_string(), e["status"].as_u64().unwrap()))
+        .collect();
+    assert!(calls.contains(&("operations".to_string(), 200)), "{calls:?}");
+}
+
+#[tokio::test]
+async fn sessions_expire_and_an_open_api_refuses_to_start() {
+    let env = Env::new(false).await;
+    let mut config = env.config();
+    config.session_ttl_secs = 0;
+    let app = start_with(config).await;
+    let (_, session) = app.post_as(Some(OPS_TOKEN), "/v1/investors/inv-a/session", json!({})).await;
+    let token = session["session_token"].as_str().unwrap().to_string();
+    let (status, _) = app
+        .post_as(Some(&token), "/v1/investors/inv-a/external-wallet/challenge", json!({ "address": Keypair::random().public_str() }))
+        .await;
+    assert_eq!(status, 401, "expired");
+
+    let mut open = env.config();
+    open.api_tokens = vec![];
+    let refused = urbanflip_backend::api::state::try_build_state(open.clone()).err().expect("no tokens, no API");
+    assert!(refused.contains("API_TOKENS"), "{refused}");
+    open.allow_unauthenticated = true;
+    assert!(urbanflip_backend::api::state::try_build_state(open).is_ok(), "explicit opt-in for local development");
+}
+
+async fn wallet_call(app: &App, session: &str, path: &str, body: Value) -> (u16, Value) {
+    app.post_as(Some(session), &format!("/v1/investors/inv-b/external-wallet/{path}"), body).await
+}
+
+#[tokio::test]
+async fn an_external_wallet_proves_ownership_and_signs_its_own_sponsored_trustline() {
+    let env = Env::new(false).await;
+    let app = env.start().await;
+    let issuer = provision(&app, "MADRID", "UFMADRID1").await;
+    let wallet = Keypair::random(); // the investor's own wallet (Freighter, xBull, ...)
+    let (_, session) = app.post_as(Some(OPS_TOKEN), "/v1/investors/inv-b/session", json!({})).await;
+    let session = session["session_token"].as_str().unwrap().to_string();
+
+    // Ownership: only a signature by the claimed address links it, once.
+    let (_, c) = wallet_call(&app, &session, "challenge", json!({ "address": wallet.public_str() })).await;
+    let challenge = c["challenge_xdr"].as_str().unwrap().to_string();
+    let (status, _) = wallet_call(&app, &session, "verify", json!({ "signed_xdr": sign_envelope(&challenge, &Keypair::random()) })).await;
+    assert_eq!(status, 422, "signed by someone else");
+    let (_, c) = wallet_call(&app, &session, "challenge", json!({ "address": wallet.public_str() })).await;
+    let signed = sign_envelope(c["challenge_xdr"].as_str().unwrap(), &wallet);
+    let (status, linked) = wallet_call(&app, &session, "verify", json!({ "signed_xdr": signed })).await;
+    assert_eq!((status, linked["address"].as_str()), (200, Some(wallet.public_str().as_str())), "{linked}");
+    assert_eq!(wallet_call(&app, &session, "verify", json!({ "signed_xdr": signed })).await.0, 422, "a challenge is single-use");
+    let (status, _) = app.post("/v1/investors/inv-b/onboard", json!({ "deal_id": "MADRID" })).await;
+    assert_eq!(status, 409, "no embedded wallet for an external-wallet investor");
+
+    // The trustline: sponsored and fee-bumped by the channel, signed by the wallet.
+    let (_, built) = wallet_call(&app, &session, "trustline", json!({ "deal_id": "MADRID" })).await;
+    assert_eq!(built["status"], "sign", "{built}");
+    let unsigned = built["xdr"].as_str().unwrap().to_string();
+    let (status, _) = wallet_call(&app, &session, "trustline/submit", json!({ "deal_id": "MADRID", "signed_xdr": unsigned })).await;
+    assert_eq!(status, 422, "the wallet's signature is required");
+    let (_, built) = wallet_call(&app, &session, "trustline", json!({ "deal_id": "MADRID" })).await;
+    let signed = sign_envelope(built["xdr"].as_str().unwrap(), &wallet);
+    let (status, submitted) = wallet_call(&app, &session, "trustline/submit", json!({ "deal_id": "MADRID", "signed_xdr": signed })).await;
+    assert_eq!(status, 200, "{submitted}");
+    assert_eq!(env.net().accounts[&wallet.public_str()].xlm, 0, "the investor spent no XLM");
+    assert!(env.net().line(&wallet.public_str(), "UFMADRID1", &issuer).is_some());
+    let (_, again) = wallet_call(&app, &session, "trustline", json!({ "deal_id": "MADRID" })).await;
+    assert_eq!(again["status"], "ready");
+
+    // From here it is an ordinary investor: gated authorization, then units.
+    assert_eq!(app.post("/v1/deals/MADRID/authorize/inv-b", json!({})).await.0, 200);
+    assert_eq!(fiat(&app, "MADRID", "inv-b", "s-b", "500").await.0, 201);
+    assert_eq!(app.post("/v1/subscriptions/s-b/settle", json!({})).await.0, 200);
+    assert_eq!(env.net().balance(&wallet.public_str(), "UFMADRID1", &issuer), Some(5_000_000_000));
+}
+
+#[tokio::test]
+async fn the_widget_is_served_only_to_its_allowed_frames() {
+    let env = Env::new(false).await;
+    let dir = std::env::temp_dir().join(format!("uf-widget-{}", rand::random::<u64>()));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("connect.html"), "<!doctype html><title>Connect</title>").unwrap();
+    std::fs::write(dir.join(".env"), "SECRET=1").unwrap();
+    let mut config = env.config();
+    config.widget_dir = Some(dir.display().to_string());
+    config.widget_frame_ancestors = vec!["https://app.urbanflip.io".into()];
+    let app = start_with(config).await;
+
+    let res = app.http.get(format!("{}/widget/connect.html", app.url)).send().await.unwrap();
+    assert_eq!(res.status(), 200, "public, no token");
+    assert_eq!(res.headers()["content-security-policy"], "frame-ancestors https://app.urbanflip.io");
+    assert_eq!(res.headers()["content-type"], "text/html; charset=utf-8");
+    for path in ["/widget/.env", "/widget/%2e%2e/Cargo.toml", "/widget/connect.exe", "/widget/missing.html"] {
+        assert_eq!(app.http.get(format!("{}{path}", app.url)).send().await.unwrap().status(), 404, "{path}");
+    }
+    std::fs::remove_dir_all(dir).unwrap();
 }

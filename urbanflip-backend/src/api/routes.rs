@@ -1,5 +1,6 @@
 //! HTTP API: every deliverable wired into one surface.
 
+use super::{auth, external};
 use super::state::{
     BankSettlement, ClawbackRecord, IssuerRecord, IssuerStatus, PendingSettlement, SettlementRecord, SharedState,
 };
@@ -47,6 +48,13 @@ pub fn router(state: SharedState) -> Router {
         .route("/v1/deals/{deal_id}/sdp/disburse", post(sdp_disburse))
         .route("/v1/trustline-check", post(trustline_check))
         .route("/v1/audit", get(audit_view))
+        .route("/v1/investors/{investor_id}/session", post(external::create_session))
+        .route("/v1/investors/{investor_id}/external-wallet/challenge", post(external::challenge))
+        .route("/v1/investors/{investor_id}/external-wallet/verify", post(external::verify))
+        .route("/v1/investors/{investor_id}/external-wallet/trustline", post(external::trustline))
+        .route("/v1/investors/{investor_id}/external-wallet/trustline/submit", post(external::trustline_submit))
+        .route("/widget/{*file}", get(external::widget_file))
+        .route_layer(axum::middleware::from_fn_with_state(state.clone(), auth::guard))
         .with_state(state)
 }
 
@@ -54,11 +62,11 @@ async fn healthz() -> Json<Value> {
     Json(json!({ "status": "ok", "service": "urbanflip-backend" }))
 }
 
-fn err(status: StatusCode, message: impl Into<String>) -> (StatusCode, Json<Value>) {
+pub(crate) fn err(status: StatusCode, message: impl Into<String>) -> (StatusCode, Json<Value>) {
     (status, Json(json!({ "error": message.into() })))
 }
 
-type ApiError = (StatusCode, Json<Value>);
+pub(crate) type ApiError = (StatusCode, Json<Value>);
 
 /// Seconds past a tx's max_time before "not on the ledger" is treated as
 /// "never will be" (absorbs clock skew against ledger close times).
@@ -81,7 +89,7 @@ fn in_progress(key: &str) -> ApiError {
     err(StatusCode::CONFLICT, format!("{key} already in progress; retry when it finishes"))
 }
 
-async fn persist(state: &SharedState) -> Result<(), ApiError> {
+pub(crate) async fn persist(state: &SharedState) -> Result<(), ApiError> {
     state
         .persist()
         .await
@@ -114,14 +122,14 @@ async fn resolve_pending(state: &SharedState, hash: &str, max_time: u64) -> Resu
     })
 }
 
-fn now_unix() -> u64 {
+pub(crate) fn now_unix() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0)
 }
 
-async fn issuer_for(state: &SharedState, deal_id: &str) -> Result<IssuerRecord, ApiError> {
+pub(crate) async fn issuer_for(state: &SharedState, deal_id: &str) -> Result<IssuerRecord, ApiError> {
     let record = state
         .issuers
         .read()
@@ -142,7 +150,12 @@ fn issuer_kp(record: &IssuerRecord) -> Result<Keypair, ApiError> {
     Keypair::from_secret_str(&record.issuer_secret).map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, e))
 }
 
+/// The investor's wallet: a linked external wallet, else the embedded one,
+/// else the address in their rail profile.
 async fn wallet_address(state: &SharedState, investor_id: &str) -> Result<String, ApiError> {
+    if let Some(a) = state.external_wallets.read().await.get(investor_id) {
+        return Ok(a.clone());
+    }
     if let Some(a) = state.wallets.read().await.address_of(investor_id) {
         return Ok(a);
     }
@@ -155,7 +168,7 @@ async fn wallet_address(state: &SharedState, investor_id: &str) -> Result<String
         .ok_or_else(|| err(StatusCode::NOT_FOUND, "investor has no wallet; onboard first"))
 }
 
-fn channel_of(state: &SharedState) -> Result<Keypair, ApiError> {
+pub(crate) fn channel_of(state: &SharedState) -> Result<Keypair, ApiError> {
     state
         .channel
         .clone()
@@ -354,6 +367,12 @@ async fn onboard_investor(
 ) -> Result<Json<Value>, ApiError> {
     let issuer = issuer_for(&state, &body.deal_id).await?;
     let channel = channel_of(&state)?;
+    if state.external_wallets.read().await.contains_key(&investor_id) {
+        return Err(err(
+            StatusCode::CONFLICT,
+            format!("investor '{investor_id}' uses an external wallet; open trustlines through the wallet widget"),
+        ));
+    }
     let key = format!("onboarding investor '{investor_id}'");
     let _guard = state.begin(key.clone()).ok_or_else(|| in_progress(&key))?;
     let address = state.wallets.write().await.get_or_create(&investor_id).public_str();
