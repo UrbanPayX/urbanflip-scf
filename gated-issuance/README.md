@@ -71,6 +71,7 @@ anything Urbanflip-specific.
 ```bash
 npm install
 npm test                 # offline structural + adapter tests (no network)
+npm run coverage         # same suite with v8 coverage; fails below 90% on the authorization path
 npm run demo             # full lifecycle on Stellar testnet, with evidence links
 RUN_LIVE=1 npm run test:live   # the same lifecycle as an assertion suite
 ```
@@ -243,8 +244,46 @@ tampered record or a corrupt file throws instead of starting empty.
 | --- | --- |
 | Issuer/asset resolve with verified domain (SEP-1) | `IssuerProvisioner` (home_domain) + `generateStellarToml`; live test asserts toml is emitted |
 | Non-KYC wallet rejected at protocol level (`op_not_authorized`); KYC-approved wallet authorized and receiving | `test/live-testnet-lifecycle.test.ts` — asserted against real testnet result codes |
-| Authorization service API documented; integration tests | This README + `test/authorization-gate.test.ts`, `test/provisioning-structure.test.ts`, `test/provisioning-idempotency.test.ts`, `test/settlement-idempotency.test.ts`, `test/clawback-idempotency.test.ts`, `test/state-lock.test.ts` |
+| Authorization service API documented; integration tests passing with >=90% coverage on the authorization path | This README + `test/authorization-gate.test.ts`, `test/trustline-authorizer-errors.test.ts`, `test/static-gate.test.ts`, `test/urbanflip-gate.test.ts`, `test/tx-submitter.test.ts`, `test/clawback-store.test.ts`, `test/provisioning-structure.test.ts`, `test/provisioning-idempotency.test.ts`, `test/settlement-idempotency.test.ts`, `test/clawback-idempotency.test.ts`, `test/state-lock.test.ts`; coverage gate below |
 | Clawback and freeze flows executed and verifiable | `TrustlineAuthorizer.freeze/clawback`; executed on testnet in demo and live test |
+
+## Coverage (D1 criterion 3)
+
+```bash
+npm run coverage   # vitest run --coverage (v8); text table + coverage/coverage-summary.json + coverage/index.html
+```
+
+**The authorization path** is the code that decides and executes trustline authorization
+and offboarding. These files are listed in `AUTHORIZATION_PATH` in `vitest.config.ts`, and
+each one must reach **90% statements, branches, functions and lines on its own**.
+`npm run coverage` exits non-zero if any of them drops below that, including a file no test
+imports, which counts as 0%.
+
+| File | Role | Stmts | Branch | Funcs | Lines |
+| --- | --- | ---: | ---: | ---: | ---: |
+| `src/gate/compliance-gate.ts` | gate port, `GateRejectedError` / `GateUnavailableError` | 100 | 100 | 100 | 100 |
+| `src/gate/static-gate.ts` | static allowlist adapter | 100 | 100 | 100 | 100 |
+| `src/gate/urbanflip-gate.ts` | Urbanflip HTTP adapter (retries, timeout, fail closed) | 100 | 100 | 100 | 100 |
+| `src/issuance/trustline-authorizer.ts` | authorize (gate first), freeze, clawback | 100 | 98.86 | 100 | 100 |
+| `src/store/clawback-store.ts` | clawback journal (memory + JSON file) | 100 | 100 | 100 | 100 |
+| `src/issuance/in-flight.ts` | concurrent same-id clawback refused | 100 | 100 | 100 | 100 |
+| `src/issuance/pending-tx.ts` | PENDING tx: applied / never applies / may still apply | 100 | 100 | 100 | 100 |
+| `src/issuance/issuer-provisioner.ts` | issuer flags strictly before any trustline | 100 | 100 | 100 | 100 |
+| `src/stellar/tx-submitter.ts` | rejected (did not apply) vs unknown (may apply) | 100 | 100 | 100 | 100 |
+| **Authorization path, aggregate** | | **100** (331/331) | **99.56** (227/228) | **100** (80/80) | **100** (298/298) |
+
+Measured on 2026-10-24 with vitest 5.0.5 and @vitest/coverage-v8 5.0.5: 138 tests passed,
+7 skipped (the opt-in live testnet suite). All of `src/` together comes to 91.28 / 82.52 /
+92.72 / 93.11. Settlement, SEP-1, the other stores, the audit log, config and the
+composition root (`src/index.ts`) appear in the report but are not held to the threshold.
+`src/testkit`, `demo`, `test` and `dist` are excluded from the report, and so is
+`src/types.ts`, which contains only type declarations.
+
+The one uncovered branch is the `?? 0` fallback in
+`maxTime: Number(tx.timeBounds?.maxTime ?? 0)` in `TrustlineAuthorizer`. It can't be
+reached through the public API because every clawback transaction is built with
+`setTimeout(30)` and so always has a `maxTime`. It stays in the code as a defensive default
+and is not excluded from the count.
 
 ## Production notes (deliberately out of scope here)
 

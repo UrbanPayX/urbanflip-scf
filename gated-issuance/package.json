@@ -7,6 +7,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "coverage": "vitest run --coverage",
     "test:live": "RUN_LIVE=1 vitest run test/live-testnet-lifecycle.test.ts",
     "demo": "tsx demo/live-lifecycle.ts"
   },
@@ -19,6 +20,7 @@
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
+    "@vitest/coverage-v8": "^5.0.5",
     "tsx": "^4.19.2",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5"

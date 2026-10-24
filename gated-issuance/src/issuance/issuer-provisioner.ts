@@ -174,9 +174,10 @@ export function assertProvisioningInvariant(tx: SDK.Transaction): void {
     'payment',
     'pathPaymentStrictReceive',
     'pathPaymentStrictSend',
-    'manageOffer',
+    // The names the SDK decodes offers as ('manageOffer'/'createPassiveOffer' never match).
+    'manageSellOffer',
     'manageBuyOffer',
-    'createPassiveOffer',
+    'createPassiveSellOffer',
     'clawback',
   ]);
   for (const op of tx.operations) {

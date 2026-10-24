@@ -129,4 +129,72 @@ describe('IssuerProvisioner (offline envelope structure)', () => {
     ]);
     expect(() => assertProvisioningInvariant(withPayment)).toThrow(/must not contain/);
   });
+
+  describe('invariant: flags strictly before any trustline', () => {
+    const funder = SDK.Keypair.random();
+    const issuer = SDK.Keypair.random().publicKey();
+    const holder = SDK.Keypair.random().publicKey();
+    const asset = new SDK.Asset('UF0042', issuer);
+    const ALL = SDK.AuthRequiredFlag | SDK.AuthRevocableFlag | SDK.AuthClawbackEnabledFlag;
+    const build = (ops: ReturnType<typeof SDK.Operation.clawback>[]) => {
+      const builder = new SDK.TransactionBuilder(new SDK.Account(funder.publicKey(), '0'), {
+        networkPassphrase: SDK.Networks.TESTNET,
+        fee: '100',
+      });
+      for (const op of ops) builder.addOperation(op);
+      return builder.setTimeout(30).build();
+    };
+    const create = () => SDK.Operation.createAccount({ destination: issuer, startingBalance: '2.5' });
+    const flags = (setFlags: number) =>
+      SDK.Operation.setOptions({ source: issuer, setFlags: setFlags as SDK.AuthFlag });
+
+    it('refuses every trustline, payment, offer or clawback operation, even alongside correct flags', () => {
+      const smuggled: Array<[string, ReturnType<typeof SDK.Operation.clawback>]> = [
+        ['changeTrust', SDK.Operation.changeTrust({ asset, source: holder })],
+        ['allowTrust', SDK.Operation.allowTrust({ trustor: holder, assetCode: 'UF0042', authorize: 1, source: issuer })],
+        ['setTrustLineFlags', SDK.Operation.setTrustLineFlags({ trustor: holder, asset, flags: { authorized: true }, source: issuer })],
+        ['payment', SDK.Operation.payment({ destination: holder, asset, amount: '1', source: issuer })],
+        ['pathPaymentStrictReceive', SDK.Operation.pathPaymentStrictReceive({ sendAsset: asset, sendMax: '1', destination: holder, destAsset: asset, destAmount: '1', source: issuer })],
+        ['pathPaymentStrictSend', SDK.Operation.pathPaymentStrictSend({ sendAsset: asset, sendAmount: '1', destination: holder, destAsset: asset, destMin: '1', source: issuer })],
+        ['manageSellOffer', SDK.Operation.manageSellOffer({ selling: asset, buying: SDK.Asset.native(), amount: '1', price: '1', source: issuer })],
+        ['manageBuyOffer', SDK.Operation.manageBuyOffer({ selling: asset, buying: SDK.Asset.native(), buyAmount: '1', price: '1', source: issuer })],
+        ['createPassiveSellOffer', SDK.Operation.createPassiveSellOffer({ selling: asset, buying: SDK.Asset.native(), amount: '1', price: '1', source: issuer })],
+        ['clawback', SDK.Operation.clawback({ from: holder, asset, amount: '1', source: issuer })],
+      ];
+      for (const [name, op] of smuggled) {
+        const tx = build([create(), flags(ALL), op]);
+        // checked on the DECODED envelope, i.e. by the op type names the SDK actually produces
+        expect(tx.operations[2]!.type).toBe(name);
+        expect(() => assertProvisioningInvariant(tx), name).toThrow(`must not contain a '${name}' operation`);
+      }
+    });
+
+    it('refuses an envelope that sets only some of the three flags, or none', () => {
+      for (const partial of [
+        SDK.AuthRequiredFlag,
+        SDK.AuthRevocableFlag | SDK.AuthClawbackEnabledFlag,
+        SDK.AuthRequiredFlag | SDK.AuthRevocableFlag,
+      ]) {
+        expect(() => assertProvisioningInvariant(build([create(), flags(partial)]))).toThrow(/must set AUTH_REQUIRED/);
+      }
+      // a setOptions that only sets the home domain does not count as configuring flags
+      const homeDomainOnly = build([create(), SDK.Operation.setOptions({ source: issuer, homeDomain: 'urbanflip.io' })]);
+      expect(() => assertProvisioningInvariant(homeDomainOnly)).toThrow(/must set AUTH_REQUIRED/);
+    });
+
+    it('refuses flags configured before the issuer account is created', () => {
+      expect(() => assertProvisioningInvariant(build([flags(ALL), create()]))).toThrow(
+        /creation must precede flag configuration/,
+      );
+    });
+
+    it('accepts the flags split across a home-domain setOptions and a flags setOptions', () => {
+      const tx = build([
+        create(),
+        SDK.Operation.setOptions({ source: issuer, homeDomain: 'urbanflip.io' }),
+        flags(ALL),
+      ]);
+      expect(() => assertProvisioningInvariant(tx)).not.toThrow();
+    });
+  });
 });
