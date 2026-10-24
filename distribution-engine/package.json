@@ -1,0 +1,26 @@
+{
+  "name": "distribution-engine",
+  "version": "0.1.0",
+  "description": "Pro-rata distribution engine for Stellar (SCF #45 D3): computes per-investor schedules from the loan ledger, emits SDP-ready payment files, checks trustlines, replays historical payouts exactly.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:live": "RUN_LIVE=1 vitest run test/live-trustline.test.ts",
+    "demo": "tsx demo/compute-and-emit.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@stellar/stellar-sdk": "^17.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@vitest/coverage-v8": "^5.0.5",
+    "tsx": "^4.19.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}

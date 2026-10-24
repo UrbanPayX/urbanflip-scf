@@ -1,0 +1,22 @@
+[package]
+name = "urbanflip-backend"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Urbanflip on Stellar — backend wiring gated issuance (D1), wallet onboarding (D2), distribution engine (D3), investor rails, and the SDP integration."
+
+[dependencies]
+axum = "0.8"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+thiserror = "2"
+stellar-xdr = { version = "30", features = ["base64", "alloc"] }
+stellar-strkey = "0.0.8"
+ed25519-dalek = "2"
+rand = "0.8"
+base64 = "0.22"
+sha2 = "0.10"
+hex = "0.4"
+chacha20poly1305 = "0.10"

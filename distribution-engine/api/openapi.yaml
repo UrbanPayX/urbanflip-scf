@@ -1,0 +1,191 @@
+openapi: 3.1.0
+info:
+  title: Urbanflip Distribution Engine
+  version: 0.1.0
+  description: >
+    Pro-rata distribution computation for deal payouts (SCF #45 D3).
+    Computes per-investor EUR schedules from the loan ledger (principal +
+    performance interest), converts them at the USDC the treasury actually
+    bought and emits SDP-ready USDC payment files, pre-checks destination
+    trustlines, and replays historical payouts exactly.
+paths:
+  /v1/deals/{dealId}/ledger:
+    post:
+      summary: Register a deal's loan ledger (positions)
+      parameters: [{ name: dealId, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [positions]
+              properties:
+                positions:
+                  type: array
+                  items:
+                    type: object
+                    required: [investorId, email, principal]
+                    properties:
+                      investorId: { type: string }
+                      email: { type: string }
+                      walletAddress:
+                        type: string
+                        description: Stellar account (G... StrKey); validated before SDP emission
+                      principal: { type: string, description: EUR decimal }
+      responses: { '201': { description: stored } }
+  /v1/deals/{dealId}/distributions:
+    post:
+      summary: Compute the EUR distribution schedule (on-chain precision)
+      parameters: [{ name: dealId, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [outcome]
+              properties:
+                outcome:
+                  type: object
+                  required: [principalRepayment, performanceInterest]
+                  properties:
+                    principalRepayment: { type: string, description: EUR decimal }
+                    performanceInterest: { type: string, description: EUR decimal }
+      responses:
+        '200': { description: EUR schedule }
+        '400': { description: validation error }
+  /v1/deals/{dealId}/distributions/replay:
+    post:
+      summary: Replay a completed deal against its historical payout record (bank precision, 2dp)
+      parameters: [{ name: dealId, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [outcome, historicalPayouts]
+              properties:
+                outcome:
+                  type: object
+                  required: [principalRepayment, performanceInterest]
+                  properties:
+                    principalRepayment: { type: string }
+                    performanceInterest: { type: string }
+                historicalPayouts:
+                  type: array
+                  items:
+                    type: object
+                    required: [investorId, amount]
+                    properties:
+                      investorId: { type: string }
+                      amount: { type: string }
+      responses:
+        '200': { description: replay report with per-row diffs }
+        '400': { description: validation error (incl. amounts finer than 2 decimals; never truncated) }
+  /v1/distributions/{dealId}/sdp-files:
+    post:
+      summary: Convert the EUR schedule to USDC and emit SDP-ready CSV payment files (amount,id,destination,memo,memo_type)
+      description: >
+        usdcFunded (the USDC the treasury bought for this payout) is split
+        pro-rata to each investor's EUR payout, exact to the cent (largest
+        remainder, ties by investorId), so the rows sum to usdcFunded and every
+        investor gets the same rate. The CSV amount column is USDC. Every row
+        must have a valid Stellar wallet; rows are never silently excluded.
+      parameters: [{ name: dealId, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [usdcFunded]
+              properties:
+                usdcFunded:
+                  type: string
+                  pattern: '^\d+(\.\d{1,2})?$'
+                  description: USDC bought, at most 2 decimals; implied USDC per EUR must be within 0.5-2
+                onChainCohort:
+                  type: array
+                  items: { type: string }
+                  description: >
+                    Wallets of the investors paid on-chain, for a deal whose
+                    other investors are paid by bank. Only these rows are
+                    converted; the rest come back in usdcConversion.otherRail
+                    with their EUR amounts. Every address must be in the
+                    schedule, else 400.
+                onlyAddresses:
+                  type: array
+                  items: { type: string }
+                  description: >
+                    READY destinations from /v1/trustline-check. Must match the
+                    schedule's destinations exactly (no row outside it, no
+                    address missing from the schedule), else 400.
+      responses:
+        '200':
+          description: USDC conversion and CSV files, max 10000 rows each
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  usdcConversion:
+                    type: object
+                    properties:
+                      dealId: { type: string }
+                      payouts:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            investorId: { type: string }
+                            email: { type: string }
+                            destination: { type: string }
+                            eur: { type: string, description: EUR owed }
+                            usdc: { type: string, description: USDC paid, 2 decimals }
+                      otherRail:
+                        type: array
+                        description: rows outside onChainCohort (paid by bank), never dropped silently
+                        items:
+                          type: object
+                          properties:
+                            investorId: { type: string }
+                            eur: { type: string }
+                      otherRailEurTotal: { type: string }
+                      eurTotal: { type: string }
+                      usdcTotal: { type: string, description: equals usdcFunded }
+                      rate: { type: string, description: USDC per EUR achieved, 6 decimals, display only }
+                  files:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name: { type: string }
+                        rowCount: { type: integer }
+                        content: { type: string, description: CSV, amounts in USDC }
+        '400': { description: 'missing/invalid usdcFunded, rate out of bounds, missing or invalid wallet address, address filter mismatch' }
+        '404': { description: no distribution computed for deal }
+  /v1/trustline-check:
+    post:
+      summary: Verify destination accounts hold an authorized trustline to the distribution asset
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [asset, addresses]
+              properties:
+                asset:
+                  type: object
+                  required: [code, issuer]
+                  properties:
+                    code: { type: string }
+                    issuer: { type: string }
+                addresses:
+                  type: array
+                  items: { type: string }
+      responses:
+        '200':
+          description: per-address state (READY | NO_ACCOUNT | TRUSTLINE_MISSING | TRUSTLINE_UNAUTHORIZED)

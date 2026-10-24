@@ -1,0 +1,14 @@
+{
+  "name": "investor-rails",
+  "version": "0.1.0",
+  "description": "Investor rail orchestration for Urbanflip on Stellar: differentiates fiat vs crypto-native investors, automates USDC collection from investor wallets, raise-close off-ramp instructions, and splits payouts into SDP (on-chain) and SEPA (bank) worklists.",
+  "type": "module",
+  "license": "Apache-2.0",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": { "@stellar/stellar-sdk": "^17.3.0" },
+  "devDependencies": { "@types/node": "^26.6.5", "typescript": "^7.0.2", "vitest": "^5.0.5" }
+}

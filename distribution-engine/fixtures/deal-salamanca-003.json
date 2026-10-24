@@ -1,0 +1,275 @@
+{
+  "ledger": {
+    "dealId": "deal-salamanca-003",
+    "positions": [
+      {
+        "investorId": "inv-c01",
+        "email": "c1@example.com",
+        "principal": "125000.00"
+      },
+      {
+        "investorId": "inv-c02",
+        "email": "c2@example.com",
+        "principal": "50000.00"
+      },
+      {
+        "investorId": "inv-c03",
+        "email": "c3@example.com",
+        "principal": "75000.00"
+      },
+      {
+        "investorId": "inv-c04",
+        "email": "c4@example.com",
+        "principal": "33333.33"
+      },
+      {
+        "investorId": "inv-c05",
+        "email": "c5@example.com",
+        "principal": "66666.67"
+      },
+      {
+        "investorId": "inv-c06",
+        "email": "c6@example.com",
+        "principal": "20000.00"
+      },
+      {
+        "investorId": "inv-c07",
+        "email": "c7@example.com",
+        "principal": "100000.00"
+      },
+      {
+        "investorId": "inv-c08",
+        "email": "c8@example.com",
+        "principal": "42500.00"
+      },
+      {
+        "investorId": "inv-c09",
+        "email": "c9@example.com",
+        "principal": "88000.88"
+      },
+      {
+        "investorId": "inv-c10",
+        "email": "c10@example.com",
+        "principal": "15000.00"
+      },
+      {
+        "investorId": "inv-c11",
+        "email": "c11@example.com",
+        "principal": "125000.00"
+      },
+      {
+        "investorId": "inv-c12",
+        "email": "c12@example.com",
+        "principal": "50000.00"
+      },
+      {
+        "investorId": "inv-c13",
+        "email": "c13@example.com",
+        "principal": "75000.00"
+      },
+      {
+        "investorId": "inv-c14",
+        "email": "c14@example.com",
+        "principal": "33333.33"
+      },
+      {
+        "investorId": "inv-c15",
+        "email": "c15@example.com",
+        "principal": "66666.67"
+      },
+      {
+        "investorId": "inv-c16",
+        "email": "c16@example.com",
+        "principal": "20000.00"
+      },
+      {
+        "investorId": "inv-c17",
+        "email": "c17@example.com",
+        "principal": "100000.00"
+      },
+      {
+        "investorId": "inv-c18",
+        "email": "c18@example.com",
+        "principal": "42500.00"
+      },
+      {
+        "investorId": "inv-c19",
+        "email": "c19@example.com",
+        "principal": "88000.88"
+      },
+      {
+        "investorId": "inv-c20",
+        "email": "c20@example.com",
+        "principal": "15000.00"
+      },
+      {
+        "investorId": "inv-c21",
+        "email": "c21@example.com",
+        "principal": "125000.00"
+      },
+      {
+        "investorId": "inv-c22",
+        "email": "c22@example.com",
+        "principal": "50000.00"
+      },
+      {
+        "investorId": "inv-c23",
+        "email": "c23@example.com",
+        "principal": "75000.00"
+      },
+      {
+        "investorId": "inv-c24",
+        "email": "c24@example.com",
+        "principal": "33333.33"
+      },
+      {
+        "investorId": "inv-c25",
+        "email": "c25@example.com",
+        "principal": "66666.67"
+      },
+      {
+        "investorId": "inv-c26",
+        "email": "c26@example.com",
+        "principal": "20000.00"
+      },
+      {
+        "investorId": "inv-c27",
+        "email": "c27@example.com",
+        "principal": "100000.00"
+      },
+      {
+        "investorId": "inv-c28",
+        "email": "c28@example.com",
+        "principal": "42500.00"
+      },
+      {
+        "investorId": "inv-c29",
+        "email": "c29@example.com",
+        "principal": "88000.88"
+      }
+    ]
+  },
+  "outcome": {
+    "principalRepayment": "1831502.64",
+    "performanceInterest": "273419.63"
+  },
+  "policy": "largest-remainder",
+  "historicalPayouts": [
+    {
+      "investorId": "inv-c01",
+      "amount": "143660.88"
+    },
+    {
+      "investorId": "inv-c02",
+      "amount": "57464.35"
+    },
+    {
+      "investorId": "inv-c03",
+      "amount": "86196.53"
+    },
+    {
+      "investorId": "inv-c04",
+      "amount": "38309.57"
+    },
+    {
+      "investorId": "inv-c05",
+      "amount": "76619.14"
+    },
+    {
+      "investorId": "inv-c06",
+      "amount": "22985.74"
+    },
+    {
+      "investorId": "inv-c07",
+      "amount": "114928.71"
+    },
+    {
+      "investorId": "inv-c08",
+      "amount": "48844.70"
+    },
+    {
+      "investorId": "inv-c09",
+      "amount": "101138.27"
+    },
+    {
+      "investorId": "inv-c10",
+      "amount": "17239.31"
+    },
+    {
+      "investorId": "inv-c11",
+      "amount": "143660.88"
+    },
+    {
+      "investorId": "inv-c12",
+      "amount": "57464.35"
+    },
+    {
+      "investorId": "inv-c13",
+      "amount": "86196.53"
+    },
+    {
+      "investorId": "inv-c14",
+      "amount": "38309.56"
+    },
+    {
+      "investorId": "inv-c15",
+      "amount": "76619.14"
+    },
+    {
+      "investorId": "inv-c16",
+      "amount": "22985.74"
+    },
+    {
+      "investorId": "inv-c17",
+      "amount": "114928.71"
+    },
+    {
+      "investorId": "inv-c18",
+      "amount": "48844.70"
+    },
+    {
+      "investorId": "inv-c19",
+      "amount": "101138.27"
+    },
+    {
+      "investorId": "inv-c20",
+      "amount": "17239.31"
+    },
+    {
+      "investorId": "inv-c21",
+      "amount": "143660.88"
+    },
+    {
+      "investorId": "inv-c22",
+      "amount": "57464.35"
+    },
+    {
+      "investorId": "inv-c23",
+      "amount": "86196.53"
+    },
+    {
+      "investorId": "inv-c24",
+      "amount": "38309.56"
+    },
+    {
+      "investorId": "inv-c25",
+      "amount": "76619.14"
+    },
+    {
+      "investorId": "inv-c26",
+      "amount": "22985.74"
+    },
+    {
+      "investorId": "inv-c27",
+      "amount": "114928.71"
+    },
+    {
+      "investorId": "inv-c28",
+      "amount": "48844.70"
+    },
+    {
+      "investorId": "inv-c29",
+      "amount": "101138.27"
+    }
+  ]
+}

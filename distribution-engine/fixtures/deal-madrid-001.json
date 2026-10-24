@@ -1,0 +1,86 @@
+{
+  "ledger": {
+    "dealId": "deal-madrid-001",
+    "positions": [
+      {
+        "investorId": "inv-a1",
+        "email": "ana@example.com",
+        "principal": "25000.00"
+      },
+      {
+        "investorId": "inv-a2",
+        "email": "luis@example.com",
+        "principal": "50000.00"
+      },
+      {
+        "investorId": "inv-a3",
+        "email": "marta@example.com",
+        "principal": "12500.00"
+      },
+      {
+        "investorId": "inv-a4",
+        "email": "pedro@example.com",
+        "principal": "75000.00"
+      },
+      {
+        "investorId": "inv-a5",
+        "email": "carmen@example.com",
+        "principal": "33333.33"
+      },
+      {
+        "investorId": "inv-a6",
+        "email": "javier@example.com",
+        "principal": "10000.00"
+      },
+      {
+        "investorId": "inv-a7",
+        "email": "elena@example.com",
+        "principal": "66666.67"
+      },
+      {
+        "investorId": "inv-a8",
+        "email": "diego@example.com",
+        "principal": "42500.00"
+      }
+    ]
+  },
+  "outcome": {
+    "principalRepayment": "315000.00",
+    "performanceInterest": "38941.27"
+  },
+  "policy": "last-absorbs",
+  "historicalPayouts": [
+    {
+      "investorId": "inv-a1",
+      "amount": "28090.57"
+    },
+    {
+      "investorId": "inv-a2",
+      "amount": "56181.15"
+    },
+    {
+      "investorId": "inv-a3",
+      "amount": "14045.28"
+    },
+    {
+      "investorId": "inv-a4",
+      "amount": "84271.73"
+    },
+    {
+      "investorId": "inv-a5",
+      "amount": "37454.09"
+    },
+    {
+      "investorId": "inv-a6",
+      "amount": "11236.23"
+    },
+    {
+      "investorId": "inv-a7",
+      "amount": "74908.20"
+    },
+    {
+      "investorId": "inv-a8",
+      "amount": "47754.02"
+    }
+  ]
+}

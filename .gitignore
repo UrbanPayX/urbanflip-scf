@@ -1,0 +1,14 @@
+# dependencies and build output
+node_modules/
+target/
+dist/
+coverage/
+
+# secrets and runtime state (state files live wherever STATE_PATH/STATE_DIR point)
+.env
+.env.*
+.lock
+*.tmp
+
+# reference documents (not code)
+Stellar Community Fund Final Submission.pdf
