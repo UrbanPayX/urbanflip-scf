@@ -86,6 +86,11 @@ CHANNEL_SECRET=S... STATIC_GATE_ALLOW='[["inv-1","*"]]' cargo run
 | `SESSION_TTL_SECS` | `900` | lifetime of investor session tokens |
 | `WIDGET_DIR` | — | built wallet widget (`wallet-onboarding/web/dist`), served at `/widget/` |
 | `WIDGET_FRAME_ANCESTORS` | none | origins allowed to frame the widget, e.g. `https://app.urbanflip.io` |
+| `BRIDGE_API_URL` | `https://api.sandbox.bridge.xyz/v0` | Bridge API; a URL containing `sandbox` turns on simulated deposits. Production: `https://api.bridge.xyz/v0` |
+| `BRIDGE_API_KEY`, `BRIDGE_CUSTOMER_ID` | — | Bridge API key (`sk-test-...` in sandbox) and Urbanflip's KYB-approved Bridge customer. Without them the ramp routes return `501` |
+| `BRIDGE_WEBHOOK_PUBLIC_KEY` | — | PEM public key of the Bridge webhook endpoint (enables `/v1/webhooks/bridge`) |
+| `COLLECTION_SECRET` | — | collection account key, so live off-ramp deposits are signed by the backend; must match `COLLECTION_ADDRESS`. Without it, pay the batch yourself and register the tx hash |
+| `DISTRIBUTION_ADDRESS` | — | the SDP distribution wallet that Bridge funding delivers USDC to |
 
 The state file is written atomically (temp file, fsync, rename, mode 0600)
 after every mutation. Back it up together with `STATE_KEY`, but store them
@@ -166,6 +171,28 @@ and clawback; `onboard` (embedded wallet) is refused for them.
 | `GET /v1/deals/{deal}/eligibility` | — | Per-subscription eligibility for issuance |
 | `POST /v1/subscriptions/{ref}/settle` | — | Issues units (EUR principal, for either rail): `{settlement: {units, txHash, ...}}`. Repeating returns `idempotent: true`. `412` not eligible, `409` trustline not ready / in flight / may still land, `502` outcome unknown (retry resolves by hash) |
 
+### D5: Bridge ramp
+
+Both conversion legs run through [Bridge](https://apidocs.bridge.xyz). Every
+call to Bridge carries an `Idempotency-Key` derived from the deal, so a
+retry never creates a second account, address or deposit. Webhooks only
+trigger the syncs; polling the sync routes works on its own (the Bridge
+sandbox sends no webhooks).
+
+| route | body | result |
+| --- | --- | --- |
+| `POST /v1/deals/{deal}/offramp/bridge-route` | the SPV account: `{iban, bic?, country, account_owner_name, address: {street_line_1, city, postal_code?, country}}` (ISO alpha-3 countries) | `{route}`: the SPV IBAN as a Bridge external account and a Stellar USDC liquidation address that pays it in EUR by SEPA. Idempotent; `409` for a different IBAN |
+| `POST /v1/deals/{deal}/offramp/send` | `{"deposit_tx_hash"?}` | Sends the pending batch's USDC to the liquidation address, once: sandbox simulates the deposit; live, the backend pays from the collection account (recorded by tx hash before submitting, resolved by hash after a timeout) or registers a deposit you made. A sent batch can no longer be rebuilt |
+| `POST /v1/deals/{deal}/offramp/sync` | — | Reads Bridge's drain: `202` while it's in progress; once paid out, completes the batch with the EUR actually received (receipt's outgoing amount) and the SEPA reference, so a shortfall waits for a top-up. `409` if Bridge returned or refunded it |
+| `POST /v1/deals/{deal}/funding/bridge-account` | — | `{funding_account}`: a virtual EUR IBAN whose deposits Bridge converts to USDC on Stellar for `DISTRIBUTION_ADDRESS`. Treasury wires the deal's distribution EUR there |
+| `POST /v1/deals/{deal}/funding/simulate-deposit` | `{amount, reference?}` | sandbox only |
+| `POST /v1/deals/{deal}/funding/sync` / `GET .../funding` | — | `{funding: {eur_deposited, usdc_received, deposits}}` from Bridge's activity |
+| `POST /v1/webhooks/bridge` | Bridge event | Public, but verified: RSA signature over SHA256(SHA256(`<t>.<body>`)) with `BRIDGE_WEBHOOK_PUBLIC_KEY`, 10-minute window, duplicates ignored. Triggers the matching sync |
+
+With funding synced, `sdp/disburse` can omit `usdc_funded` and pays exactly
+the USDC Bridge delivered (whole cents); a typed figure that differs is
+refused. One funding account per deal: it assumes one distribution per deal.
+
 ### D3/D4: distributions
 
 | route | body | result |
@@ -174,7 +201,7 @@ and clawback; `onboard` (embedded wallet) is refused for them.
 | `POST /v1/deals/{deal}/distributions` | `{outcome: {principal_repayment, performance_interest}}` | Exact pro-rata schedule; rows always sum to the totals |
 | `POST /v1/deals/{deal}/distributions/replay` | `{outcome, historical: [{investor_id, amount}], policy?}` | `{match, diffs}` against a historical payout |
 | `POST /v1/deals/{deal}/payouts/split?usdc_funded=39060.00` | — | EUR worklists per rail, the bank (SEPA) file, and `onChainEurToConvert` for treasury. With `usdc_funded`, also the USDC conversion and SDP files |
-| `POST /v1/deals/{deal}/sdp/disburse` | `{"usdc_funded": "39060.00"}` (USDC bought for the on-chain cohort, at most 2 decimals) | Splits the USDC pro-rata to the EUR owed and creates each SDP file once (`idempotent: true` on repeat). `409` if a file already sent would now differ, in USDC or in the EUR behind it (reconcile in the SDP first) |
+| `POST /v1/deals/{deal}/sdp/disburse` | `{"usdc_funded"?: "39060.00"}` (USDC bought for the on-chain cohort, at most 2 decimals; omitted = the Bridge-confirmed funding) | Splits the USDC pro-rata to the EUR owed and creates each SDP file once (`idempotent: true` on repeat). `409` if a file already sent would now differ, in USDC or in the EUR behind it (reconcile in the SDP first) |
 | `POST /v1/trustline-check` | `{asset_code, asset_issuer, addresses: [...]}` | `Ready` / `Missing` / `Unauthorized` / `NoAccount` per address |
 | `GET /v1/audit` | — | Last 50 audit events |
 
@@ -214,3 +241,8 @@ cargo test --test testnet -- --ignored --nocapture  # live testnet rehearsal (~9
   ceremony and signer segregation are Deliverable 8.
 - One instance per state file, enforced by the lock; there is no clustering
   across instances.
+- Bridge is wired against its documented API and a strict fake; it has not
+  run against Bridge itself yet. EUR and SEPA must be enabled by Bridge
+  sales (with a SEPA endorsement) before the sandbox or production can be
+  used, and the EUR IBAN to USDC-on-Stellar route should be confirmed with
+  them. `COLLECTION_SECRET` is a hot key until the D8 key ceremony.

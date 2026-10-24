@@ -117,12 +117,20 @@ fn policy(method: &Method, route: &str) -> Option<Access> {
         ("POST", "/v1/deals/{deal_id}/freeze/{investor_id}") | ("POST", "/v1/deals/{deal_id}/clawback/{investor_id}") => {
             Access::Staff(&[Compliance])
         }
-        ("POST", "/v1/deals/{deal_id}/offramp/build")
+        ("POST", "/v1/webhooks/bridge") => Access::Public, // verified by Bridge's signature
+        ("POST", "/v1/deals/{deal_id}/offramp/bridge-route")
+        | ("POST", "/v1/deals/{deal_id}/offramp/send")
+        | ("POST", "/v1/deals/{deal_id}/offramp/sync")
+        | ("POST", "/v1/deals/{deal_id}/funding/bridge-account")
+        | ("POST", "/v1/deals/{deal_id}/funding/simulate-deposit")
+        | ("POST", "/v1/deals/{deal_id}/funding/sync")
+        | ("POST", "/v1/deals/{deal_id}/offramp/build")
         | ("POST", "/v1/deals/{deal_id}/offramp/complete")
         | ("POST", "/v1/deals/{deal_id}/offramp/top-up")
         | ("POST", "/v1/deals/{deal_id}/payouts/split")
         | ("POST", "/v1/deals/{deal_id}/sdp/disburse") => Access::Staff(&[Treasury]),
         ("GET", "/v1/deals/{deal_id}/eligibility") => Access::Staff(&[Operations, Treasury, Compliance, Read]),
+        ("GET", "/v1/deals/{deal_id}/funding") => Access::Staff(&[Treasury, Read]),
         ("POST", "/v1/trustline-check") => Access::Staff(&[Operations, Treasury, Compliance, Read]),
         ("GET", "/v1/audit") => Access::Staff(&[Compliance, Read]),
         ("POST", "/v1/investors/{investor_id}/external-wallet/challenge")

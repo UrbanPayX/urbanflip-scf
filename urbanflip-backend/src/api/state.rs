@@ -47,6 +47,19 @@ pub struct Config {
     pub widget_dir: Option<String>,
     /// Origins allowed to frame the widget (e.g. https://app.urbanflip.io).
     pub widget_frame_ancestors: Vec<String>,
+    /// Bridge API base, e.g. https://api.sandbox.bridge.xyz/v0 (default) or https://api.bridge.xyz/v0.
+    pub bridge_api_url: String,
+    pub bridge_api_key: Option<String>,
+    /// The Bridge customer (Urbanflip, KYB-approved) that owns the routes.
+    pub bridge_customer_id: Option<String>,
+    /// Sandbox: deposits are simulated by Bridge instead of sent on-chain.
+    pub bridge_sandbox: bool,
+    /// PEM public key of the Bridge webhook endpoint.
+    pub bridge_webhook_public_key: Option<String>,
+    /// Signs off-ramp deposits from the collection account (live Bridge only).
+    pub collection_secret: Option<String>,
+    /// The SDP distribution wallet that Bridge funding delivers USDC to.
+    pub distribution_address: Option<String>,
 }
 
 impl Config {
@@ -94,6 +107,13 @@ impl Config {
             widget_frame_ancestors: std::env::var("WIDGET_FRAME_ANCESTORS")
                 .map(|v| v.split([' ', ',']).filter(|o| !o.is_empty()).map(str::to_string).collect())
                 .unwrap_or_default(),
+            bridge_api_url: std::env::var("BRIDGE_API_URL").unwrap_or_else(|_| "https://api.sandbox.bridge.xyz/v0".into()),
+            bridge_api_key: std::env::var("BRIDGE_API_KEY").ok(),
+            bridge_customer_id: std::env::var("BRIDGE_CUSTOMER_ID").ok(),
+            bridge_sandbox: std::env::var("BRIDGE_API_URL").map(|u| u.contains("sandbox")).unwrap_or(true),
+            bridge_webhook_public_key: std::env::var("BRIDGE_WEBHOOK_PUBLIC_KEY").ok(),
+            collection_secret: std::env::var("COLLECTION_SECRET").ok(),
+            distribution_address: std::env::var("DISTRIBUTION_ADDRESS").ok(),
         }
     }
 }
@@ -184,6 +204,15 @@ pub struct AppState {
     /// investor_id -> address proven through the ownership challenge.
     pub external_wallets: RwLock<HashMap<String, String>>,
     pub sessions: crate::api::auth::Sessions,
+    pub bridge: crate::bridge::BridgeClient,
+    /// Collection account key (live Bridge off-ramp deposits), when configured.
+    pub collection: Option<Keypair>,
+    pub bridge_routes: RwLock<HashMap<String, crate::api::ramp::OfframpRoute>>,
+    pub bridge_sends: RwLock<HashMap<String, crate::api::ramp::OfframpSend>>,
+    pub funding_accounts: RwLock<HashMap<String, crate::api::ramp::FundingAccount>>,
+    pub funding: RwLock<HashMap<String, crate::api::ramp::FundingSummary>>,
+    /// Bridge webhook event ids already processed (redeliveries are no-ops).
+    pub webhook_events: Mutex<HashSet<String>>,
     pub pending_signatures: crate::api::external::PendingSignatures,
     pub disbursements: RwLock<HashMap<String, Vec<serde_json::Value>>>,
     pub audit: RwLock<AuditLog>,
@@ -247,6 +276,10 @@ impl AppState {
             pending_settlements: self.pending_settlements.read().await.clone(),
             clawbacks: self.clawbacks.read().await.clone(),
             external_wallets: self.external_wallets.read().await.clone(),
+            bridge_routes: self.bridge_routes.read().await.clone(),
+            bridge_sends: self.bridge_sends.read().await.clone(),
+            funding_accounts: self.funding_accounts.read().await.clone(),
+            funding: self.funding.read().await.clone(),
             wallets: self
                 .wallets
                 .read()
@@ -294,6 +327,16 @@ pub fn try_build_state(config: Config) -> Result<SharedState, String> {
         .map(|s| Keypair::from_secret_str(s).map_err(|e| format!("CHANNEL_SECRET invalid: {e}")))
         .transpose()?;
     let sdp = SdpClient::new(config.sdp_base_url.clone(), config.sdp_token.clone());
+    let collection = config
+        .collection_secret
+        .as_ref()
+        .map(|s| Keypair::from_secret_str(s).map_err(|e| format!("COLLECTION_SECRET invalid: {e}")))
+        .transpose()?;
+    if let Some(kp) = &collection {
+        if kp.public_str() != config.collection_address {
+            return Err("COLLECTION_SECRET does not match COLLECTION_ADDRESS".into());
+        }
+    }
     let store = match &config.state_path {
         Some(path) => {
             let key = config.state_key.as_deref().ok_or("STATE_PATH requires STATE_KEY (64 hex chars)")?;
@@ -347,6 +390,18 @@ pub fn try_build_state(config: Config) -> Result<SharedState, String> {
         clawbacks: RwLock::new(snapshot.clawbacks),
         external_wallets: RwLock::new(snapshot.external_wallets),
         sessions: Default::default(),
+        bridge: crate::bridge::BridgeClient::new(
+            &config.bridge_api_url,
+            config.bridge_api_key.clone(),
+            config.bridge_customer_id.clone(),
+            config.bridge_sandbox,
+        ),
+        collection,
+        bridge_routes: RwLock::new(snapshot.bridge_routes),
+        bridge_sends: RwLock::new(snapshot.bridge_sends),
+        funding_accounts: RwLock::new(snapshot.funding_accounts),
+        funding: RwLock::new(snapshot.funding),
+        webhook_events: Mutex::new(HashSet::new()),
         pending_signatures: Default::default(),
         wallets: RwLock::new(wallets),
         disbursements: RwLock::new(snapshot.disbursements),

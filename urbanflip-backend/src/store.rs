@@ -43,6 +43,14 @@ pub struct Snapshot {
     /// investor_id -> external wallet address proven by challenge.
     #[serde(default)]
     pub external_wallets: HashMap<String, String>,
+    #[serde(default)]
+    pub bridge_routes: HashMap<String, crate::api::ramp::OfframpRoute>,
+    #[serde(default)]
+    pub bridge_sends: HashMap<String, crate::api::ramp::OfframpSend>,
+    #[serde(default)]
+    pub funding_accounts: HashMap<String, crate::api::ramp::FundingAccount>,
+    #[serde(default)]
+    pub funding: HashMap<String, crate::api::ramp::FundingSummary>,
     /// investor_id -> sealed wallet secret (dev wallet provider only).
     pub wallets: HashMap<String, String>,
     /// deal_id -> SDP disbursements created so far.

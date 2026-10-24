@@ -61,6 +61,39 @@ pub struct Net {
     pub payments: Vec<Value>,
     pub sdp_creates: Vec<Value>,
     pub base_url: String,
+    pub bridge: BridgeNet,
+}
+
+pub const BRIDGE_KEY: &str = "sk-test-fake";
+pub const BRIDGE_CUSTOMER: &str = "cust_test";
+
+/// Fake Bridge state: what the real API would hold for our customer.
+#[derive(Default)]
+pub struct BridgeNet {
+    /// Idempotency-Key -> (request body, response): replays like Bridge.
+    pub idempotency: HashMap<String, (Value, Value)>,
+    /// POSTs that created something (replays excluded).
+    pub creations: usize,
+    pub external_accounts: Vec<Value>,
+    /// (liquidation address id, G-address, its JSON).
+    pub liquidation: Vec<(String, String, Value)>,
+    pub drains: Vec<Value>,
+    pub virtual_accounts: Vec<Value>,
+    pub va_events: Vec<Value>,
+}
+
+impl BridgeNet {
+    /// Bridge finished paying a drain out by SEPA: `eur` reached the IBAN.
+    pub fn process_drain(&mut self, drain_id: &str, eur: &str) {
+        let drain = self.drains.iter_mut().find(|d| d["id"] == drain_id).expect("drain");
+        drain["state"] = json!("payment_processed");
+        drain["receipt"] = json!({ "initial_amount": drain["amount"], "outgoing_amount": eur, "destination_currency": "eur",
+            "exchange_rate": "0.92", "url": format!("https://dashboard.bridge.xyz/receipt/{drain_id}") });
+    }
+
+    pub fn last_drain_id(&self) -> String {
+        self.drains.last().expect("a drain")["id"].as_str().unwrap().to_string()
+    }
 }
 
 pub type FakeNet = Arc<Mutex<Net>>;
@@ -98,6 +131,21 @@ pub fn stroops(amount: i64) -> String {
 }
 
 impl Net {
+    /// Like Bridge watching the chain: a payment into one of its liquidation
+    /// addresses starts a drain carrying the deposit's tx hash.
+    fn observe_bridge_deposits(&mut self, envelope: &TransactionEnvelope, hash: &str) {
+        let TransactionEnvelope::Tx(env) = envelope else { return };
+        for op in env.tx.operations.iter() {
+            let OperationBody::Payment(p) = &op.body else { continue };
+            let to = muxed_str(&p.destination);
+            let Some((la_id, _, _)) = self.bridge.liquidation.iter().find(|(_, address, _)| address == &to).cloned() else { continue };
+            let id = format!("dr_{}", self.bridge.drains.len() + 1);
+            self.bridge.drains.push(json!({ "id": id, "customer_id": BRIDGE_CUSTOMER, "liquidation_address_id": la_id,
+                "amount": stroops(p.amount), "currency": "usdc", "state": "funds_received", "deposit_tx_hash": hash,
+                "destination": { "payment_rail": "sepa", "currency": "eur", "sepa_reference": "UF OFFRAMP" } }));
+        }
+    }
+
     pub fn fund(&mut self, address: &str, xlm: i64) {
         self.accounts.insert(address.to_string(), Account { seq: 1 << 32, xlm, ..Default::default() });
     }
@@ -240,7 +288,15 @@ fn apply_op(accounts: &mut HashMap<String, Account>, source: &str, body: &Operat
         OperationBody::Payment(op) => {
             let Some(key) = asset_key(&op.asset) else { return "op_malformed".into() };
             if key.1 != source {
-                return "op_malformed".into(); // only issuer payments are modelled
+                // A holder paying another holder: debit the sender first.
+                let Some(from) = accounts.get_mut(source).and_then(|a| a.lines.get_mut(&key)) else { return "op_src_no_trust".into() };
+                if !from.authorized {
+                    return "op_src_not_authorized".into();
+                }
+                if from.balance < op.amount {
+                    return "op_underfunded".into();
+                }
+                from.balance -= op.amount;
             }
             let Some(account) = accounts.get_mut(&muxed_str(&op.destination)) else { return "op_no_destination".into() };
             let Some(line) = account.lines.get_mut(&key) else { return "op_no_trust".into() };
@@ -304,6 +360,7 @@ async fn submit(State(net): State<FakeNet>, Form(form): Form<HashMap<String, Str
     match net.apply(&envelope) {
         Ok(hash) => {
             net.txs.insert(hash.clone(), true);
+            net.observe_bridge_deposits(&envelope, &hash);
             if net.mode == SubmitMode::TimeoutAfterApply {
                 return timeout;
             }
@@ -337,6 +394,212 @@ async fn sdp_create(State(net): State<FakeNet>, Json(body): Json<Value>) -> Json
     Json(json!({ "id": format!("disb-{}", net.sdp_creates.len()), "name": body["name"] }))
 }
 
+// ---------------- fake Bridge (https://apidocs.bridge.xyz) ----------------
+
+type BridgeReply = (StatusCode, Json<Value>);
+
+/// Api-Key and customer must match; every POST needs an Idempotency-Key,
+/// which replays the first response (and refuses a changed body), as Bridge does.
+fn bridge_gate(net: &mut Net, headers: &axum::http::HeaderMap, customer: &str, body: Option<&Value>) -> Result<Option<String>, BridgeReply> {
+    if headers.get("api-key").and_then(|v| v.to_str().ok()) != Some(BRIDGE_KEY) {
+        return Err((StatusCode::UNAUTHORIZED, Json(json!({ "code": "unauthorized" }))));
+    }
+    if customer != BRIDGE_CUSTOMER {
+        return Err((StatusCode::NOT_FOUND, Json(json!({ "code": "not_found" }))));
+    }
+    let Some(body) = body else { return Ok(None) };
+    let Some(key) = headers.get("idempotency-key").and_then(|v| v.to_str().ok()).map(str::to_string) else {
+        return Err((StatusCode::BAD_REQUEST, Json(json!({ "code": "idempotency_key_required" }))));
+    };
+    if let Some((first_body, response)) = net.bridge.idempotency.get(&key) {
+        return Err(if first_body == body {
+            (StatusCode::CREATED, Json(response.clone()))
+        } else {
+            (StatusCode::UNPROCESSABLE_ENTITY, Json(json!({ "code": "idempotency_key_reused" })))
+        });
+    }
+    Ok(Some(key))
+}
+
+fn bridge_created(net: &mut Net, key: String, body: Value, response: Value) -> BridgeReply {
+    net.bridge.creations += 1;
+    net.bridge.idempotency.insert(key, (body, response.clone()));
+    (StatusCode::CREATED, Json(response))
+}
+
+fn invalid(message: &str) -> BridgeReply {
+    (StatusCode::BAD_REQUEST, Json(json!({ "code": "invalid_parameters", "message": message })))
+}
+
+async fn bridge_external_account(
+    State(net): State<FakeNet>,
+    Path(customer): Path<String>,
+    headers: axum::http::HeaderMap,
+    Json(body): Json<Value>,
+) -> BridgeReply {
+    let mut net = net.lock().unwrap();
+    let key = match bridge_gate(&mut net, &headers, &customer, Some(&body)) {
+        Ok(k) => k.unwrap(),
+        Err(reply) => return reply,
+    };
+    if body["account_type"] != "iban" || body["currency"] != "eur" || !body["iban"]["account_number"].is_string()
+        || body["iban"]["country"].as_str().map(str::len) != Some(3) || body["account_owner_type"] != "business"
+        || !body["business_name"].is_string() || !body["address"]["street_line_1"].is_string()
+    {
+        return invalid("external account fields");
+    }
+    let id = format!("ea_{}", net.bridge.external_accounts.len() + 1);
+    let account = json!({ "id": id, "customer_id": customer, "currency": "eur", "account_type": "iban", "active": true,
+        "iban": { "last_4": "1332", "country": body["iban"]["country"] } });
+    net.bridge.external_accounts.push(account.clone());
+    bridge_created(&mut net, key, body, account)
+}
+
+async fn bridge_liquidation_address(
+    State(net): State<FakeNet>,
+    Path(customer): Path<String>,
+    headers: axum::http::HeaderMap,
+    Json(body): Json<Value>,
+) -> BridgeReply {
+    let mut net = net.lock().unwrap();
+    let key = match bridge_gate(&mut net, &headers, &customer, Some(&body)) {
+        Ok(k) => k.unwrap(),
+        Err(reply) => return reply,
+    };
+    let known_account = net.bridge.external_accounts.iter().any(|a| a["id"] == body["external_account_id"]);
+    if body["chain"] != "stellar" || body["currency"] != "usdc" || body["destination_payment_rail"] != "sepa"
+        || body["destination_currency"] != "eur" || !known_account
+        || body["destination_sepa_reference"].as_str().map(|r| (6..=140).contains(&r.len())) != Some(true)
+        || body.get("return_address").is_some()
+        || body.get("return_instructions").is_some_and(|r| !r["memo"].is_string())
+    {
+        return invalid("liquidation address fields");
+    }
+    let n = net.bridge.liquidation.len() as u64 + 1;
+    let owner = Keypair::random();
+    let address = owner.public_str();
+    let memoless = stellar_strkey::ed25519::MuxedAccount { ed25519: owner.public_bytes(), id: n }.to_string();
+    let la = json!({ "id": format!("la_{n}"), "customer_id": customer, "chain": "stellar", "currency": "usdc",
+        "address": address, "memoless_address": memoless, "external_account_id": body["external_account_id"],
+        "destination_payment_rail": "sepa", "destination_currency": "eur", "state": "active" });
+    net.fund(&address, 10 * 10_000_000);
+    net.bridge.liquidation.push((format!("la_{n}"), address, la.clone()));
+    bridge_created(&mut net, key, body, la)
+}
+
+async fn bridge_simulate_drain(
+    State(net): State<FakeNet>,
+    Path((customer, id)): Path<(String, String)>,
+    headers: axum::http::HeaderMap,
+    Json(body): Json<Value>,
+) -> BridgeReply {
+    let mut net = net.lock().unwrap();
+    let key = match bridge_gate(&mut net, &headers, &customer, Some(&body)) {
+        Ok(k) => k.unwrap(),
+        Err(reply) => return reply,
+    };
+    if body["currency"] != "usdc" || !body["amount"].is_string() || !net.bridge.liquidation.iter().any(|(la, _, _)| la == &id) {
+        return invalid("simulate_deposit fields");
+    }
+    let drain_id = format!("dr_{}", net.bridge.drains.len() + 1);
+    net.bridge.drains.push(json!({ "id": drain_id, "customer_id": customer, "liquidation_address_id": id, "amount": body["amount"],
+        "currency": "usdc", "state": "funds_received", "destination": { "payment_rail": "sepa", "currency": "eur", "sepa_reference": "UF OFFRAMP" } }));
+    bridge_created(&mut net, key, body, json!({ "success": true, "drain_id": drain_id }))
+}
+
+async fn bridge_drains(
+    State(net): State<FakeNet>,
+    Path((customer, id)): Path<(String, String)>,
+    headers: axum::http::HeaderMap,
+    axum::extract::Query(q): axum::extract::Query<HashMap<String, String>>,
+) -> BridgeReply {
+    let mut net = net.lock().unwrap();
+    if let Err(reply) = bridge_gate(&mut net, &headers, &customer, None) {
+        return reply;
+    }
+    let data: Vec<Value> = net
+        .bridge
+        .drains
+        .iter()
+        .filter(|d| d["liquidation_address_id"] == id.as_str())
+        .filter(|d| q.get("drain_id").is_none_or(|v| d["id"] == v.as_str()))
+        .filter(|d| q.get("tx_hash").is_none_or(|v| d["deposit_tx_hash"] == v.as_str()))
+        .cloned()
+        .collect();
+    (StatusCode::OK, Json(json!({ "count": data.len(), "data": data })))
+}
+
+async fn bridge_virtual_account(
+    State(net): State<FakeNet>,
+    Path(customer): Path<String>,
+    headers: axum::http::HeaderMap,
+    Json(body): Json<Value>,
+) -> BridgeReply {
+    let mut net = net.lock().unwrap();
+    let key = match bridge_gate(&mut net, &headers, &customer, Some(&body)) {
+        Ok(k) => k.unwrap(),
+        Err(reply) => return reply,
+    };
+    let dest = &body["destination"];
+    if body["source"]["currency"] != "eur" || dest["currency"] != "usdc" || dest["payment_rail"] != "stellar"
+        || !dest["address"].as_str().is_some_and(|a| decode_public(a).is_ok())
+    {
+        return invalid("virtual account fields");
+    }
+    let id = format!("va_{}", net.bridge.virtual_accounts.len() + 1);
+    let va = json!({ "id": id, "status": "activated", "customer_id": customer,
+        "source_deposit_instructions": { "currency": "eur", "payment_rails": ["sepa"], "iban": "LU280019400644750000",
+            "bic": "BCIRLULL", "account_holder_name": "Bridge Building Sp. Z.o.o.", "bank_name": "Banking Circle S.A.",
+            "bank_address": "2 Boulevard de la Foire, L-1528 Luxembourg" },
+        "destination": dest });
+    net.bridge.virtual_accounts.push(va.clone());
+    bridge_created(&mut net, key, body, va)
+}
+
+/// USDC Bridge delivers per EUR in the fake (1.085).
+pub const FAKE_USDC_PER_EUR_MILLI: i64 = 1085;
+
+async fn bridge_simulate_va_deposit(
+    State(net): State<FakeNet>,
+    Path((customer, id)): Path<(String, String)>,
+    headers: axum::http::HeaderMap,
+    Json(body): Json<Value>,
+) -> BridgeReply {
+    let mut net = net.lock().unwrap();
+    let key = match bridge_gate(&mut net, &headers, &customer, Some(&body)) {
+        Ok(k) => k.unwrap(),
+        Err(reply) => return reply,
+    };
+    let Some(eur) = body["amount"].as_str().and_then(|a| urbanflip_backend::domain::money::to_stroops(a).ok()) else {
+        return invalid("amount");
+    };
+    if body["currency"] != "eur" || !net.bridge.virtual_accounts.iter().any(|v| v["id"] == id.as_str()) {
+        return invalid("simulate_deposit fields");
+    }
+    let n = net.bridge.va_events.len() + 1;
+    let usdc = eur * FAKE_USDC_PER_EUR_MILLI as i128 / 1000;
+    let deposit = format!("dep_{n}");
+    net.bridge.va_events.push(json!({ "id": format!("vae_{n}"), "type": "funds_received", "virtual_account_id": id,
+        "amount": urbanflip_backend::domain::money::from_stroops(eur), "currency": "eur", "deposit_id": deposit }));
+    net.bridge.va_events.push(json!({ "id": format!("vae_{}", n + 1), "type": "payment_processed", "virtual_account_id": id,
+        "amount": urbanflip_backend::domain::money::from_stroops(usdc), "currency": "usdc", "deposit_id": deposit,
+        "destination_tx_hash": format!("{:064x}", n) }));
+    bridge_created(&mut net, key, body, json!({ "success": true }))
+}
+
+async fn bridge_va_history(
+    State(net): State<FakeNet>,
+    Path((customer, id)): Path<(String, String)>,
+    headers: axum::http::HeaderMap,
+) -> BridgeReply {
+    let mut net = net.lock().unwrap();
+    if let Err(reply) = bridge_gate(&mut net, &headers, &customer, None) {
+        return reply;
+    }
+    let data: Vec<Value> = net.bridge.va_events.iter().filter(|e| e["virtual_account_id"] == id.as_str()).cloned().collect();
+    (StatusCode::OK, Json(json!({ "count": data.len(), "data": data })))
+}
+
 pub struct Fake {
     pub net: FakeNet,
     pub url: String,
@@ -352,6 +615,7 @@ pub async fn spawn_fake() -> Fake {
         payments: vec![],
         sdp_creates: vec![],
         base_url: String::new(),
+        bridge: BridgeNet::default(),
     }));
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let url = format!("http://{}", listener.local_addr().unwrap());
@@ -362,6 +626,13 @@ pub async fn spawn_fake() -> Fake {
         .route("/transactions", post(submit))
         .route("/transactions/{hash}", get(get_tx))
         .route("/disbursements", post(sdp_create))
+        .route("/v0/customers/{customer}/external_accounts", post(bridge_external_account))
+        .route("/v0/customers/{customer}/liquidation_addresses", post(bridge_liquidation_address))
+        .route("/v0/customers/{customer}/liquidation_addresses/{id}/simulate_deposit", post(bridge_simulate_drain))
+        .route("/v0/customers/{customer}/liquidation_addresses/{id}/drains", get(bridge_drains))
+        .route("/v0/customers/{customer}/virtual_accounts", post(bridge_virtual_account))
+        .route("/v0/customers/{customer}/virtual_accounts/{id}/simulate_deposit", post(bridge_simulate_va_deposit))
+        .route("/v0/customers/{customer}/virtual_accounts/{id}/history", get(bridge_va_history))
         .with_state(net.clone());
     tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
     Fake { net, url }
@@ -446,6 +717,7 @@ pub const STATE_KEY: &str = "4f3c2b1a00112233445566778899aabbccddeeff0123456789a
 
 pub struct Env {
     pub fake: Fake,
+    pub distribution: Keypair,
     pub channel: Keypair,
     pub collection: Keypair,
     pub usdc_issuer: Keypair,
@@ -466,7 +738,7 @@ impl Env {
         }
         let state_path = persistent
             .then(|| std::env::temp_dir().join(format!("uf-it-{}", rand::random::<u64>())).join("state.json"));
-        Self { fake, channel, collection, usdc_issuer, state_path }
+        Self { fake, distribution: Keypair::random(), channel, collection, usdc_issuer, state_path }
     }
 
     pub fn config(&self) -> Config {
@@ -494,6 +766,13 @@ impl Env {
             session_ttl_secs: 900,
             widget_dir: None,
             widget_frame_ancestors: vec![],
+            bridge_api_url: format!("{}/v0", self.fake.url),
+            bridge_api_key: Some(BRIDGE_KEY.into()),
+            bridge_customer_id: Some(BRIDGE_CUSTOMER.into()),
+            bridge_sandbox: true,
+            bridge_webhook_public_key: Some(include_str!("../fixtures/webhook-test-key.pub.pem").into()),
+            collection_secret: None,
+            distribution_address: Some(self.distribution.public_str()),
         }
     }
 

@@ -139,6 +139,36 @@ pub fn op_set_trustline_flags(trustor: &[u8; 32], code: &str, issuer: &[u8; 32],
     ))
 }
 
+/// A destination given as a G-address or an M-address (muxed, e.g. Bridge's
+/// memo-less deposit address).
+pub fn muxed_account(address: &str) -> Result<MuxedAccount, String> {
+    match stellar_strkey::Strkey::from_string(address).map_err(|e| format!("invalid address '{address}': {e}"))? {
+        stellar_strkey::Strkey::PublicKeyEd25519(k) => Ok(muxed(&k.0)),
+        stellar_strkey::Strkey::MuxedAccountEd25519(m) => {
+            Ok(MuxedAccount::MuxedEd25519(stellar_xdr::MuxedAccountMed25519 { id: m.id, ed25519: Uint256(m.ed25519) }))
+        }
+        _ => Err(format!("'{address}' is not an account address")),
+    }
+}
+
+/// A payment of an issued asset to a G- or M-address.
+pub fn op_payment_to(destination: &str, code: &str, issuer: &[u8; 32], amount_stroops: i64) -> Result<Operation, String> {
+    Ok(op(
+        None,
+        OperationBody::Payment(PaymentOp { destination: muxed_account(destination)?, asset: asset(code, issuer)?, amount: amount_stroops }),
+    ))
+}
+
+/// As build_tx, with an optional text memo (at most 28 bytes).
+pub fn build_tx_with_memo(source: &[u8; 32], seq: u64, fee_per_op: u32, ops: Vec<Operation>, memo: Option<&str>) -> Result<Transaction, String> {
+    let mut tx = build_tx(source, seq, fee_per_op, ops);
+    if let Some(text) = memo {
+        let text: stellar_xdr::StringM<28> = text.as_bytes().to_vec().try_into().map_err(|_| format!("memo '{text}' exceeds 28 bytes"))?;
+        tx.memo = Memo::Text(text);
+    }
+    Ok(tx)
+}
+
 /// SEP-10-style challenge op: `name` = value, sourced by the client account.
 pub fn op_manage_data(source: &[u8; 32], name: &str, value: &[u8]) -> Result<Operation, String> {
     let data_name: stellar_xdr::StringM<64> = name.as_bytes().to_vec().try_into().map_err(|_| "data name <= 64 bytes")?;

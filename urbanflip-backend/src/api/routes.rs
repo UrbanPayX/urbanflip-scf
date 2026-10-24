@@ -1,10 +1,10 @@
 //! HTTP API: every deliverable wired into one surface.
 
-use super::{auth, external};
+use super::{auth, external, ramp};
 use super::state::{
     BankSettlement, ClawbackRecord, IssuerRecord, IssuerStatus, PendingSettlement, SettlementRecord, SharedState,
 };
-use crate::domain::money::display_amount;
+use crate::domain::money::{display_amount, to_stroops};
 use crate::domain::prorata::{
     compute_distribution, replay_deal, ComputeOptions, DealLedger, DealOutcome, HistoricalPayout,
     LoanPosition, RemainderPolicy,
@@ -54,6 +54,14 @@ pub fn router(state: SharedState) -> Router {
         .route("/v1/investors/{investor_id}/external-wallet/trustline", post(external::trustline))
         .route("/v1/investors/{investor_id}/external-wallet/trustline/submit", post(external::trustline_submit))
         .route("/widget/{*file}", get(external::widget_file))
+        .route("/v1/deals/{deal_id}/offramp/bridge-route", post(ramp::offramp_route))
+        .route("/v1/deals/{deal_id}/offramp/send", post(ramp::offramp_send))
+        .route("/v1/deals/{deal_id}/offramp/sync", post(ramp::offramp_sync))
+        .route("/v1/deals/{deal_id}/funding", get(ramp::funding_view))
+        .route("/v1/deals/{deal_id}/funding/bridge-account", post(ramp::funding_account))
+        .route("/v1/deals/{deal_id}/funding/simulate-deposit", post(ramp::funding_simulate))
+        .route("/v1/deals/{deal_id}/funding/sync", post(ramp::funding_sync))
+        .route("/v1/webhooks/bridge", post(ramp::webhook))
         .route_layer(axum::middleware::from_fn_with_state(state.clone(), auth::guard))
         .with_state(state)
 }
@@ -72,7 +80,7 @@ pub(crate) type ApiError = (StatusCode, Json<Value>);
 /// "never will be" (absorbs clock skew against ledger close times).
 const MAX_TIME_GRACE_SECS: u64 = 30;
 
-fn ops_err(e: OpsError) -> ApiError {
+pub(crate) fn ops_err(e: OpsError) -> ApiError {
     let status = match &e {
         OpsError::Gate(_) => StatusCode::FORBIDDEN,
         OpsError::GateUnavailable(_) => StatusCode::SERVICE_UNAVAILABLE,
@@ -85,7 +93,7 @@ fn ops_err(e: OpsError) -> ApiError {
     err(status, e.to_string())
 }
 
-fn in_progress(key: &str) -> ApiError {
+pub(crate) fn in_progress(key: &str) -> ApiError {
     err(StatusCode::CONFLICT, format!("{key} already in progress; retry when it finishes"))
 }
 
@@ -97,7 +105,7 @@ pub(crate) async fn persist(state: &SharedState) -> Result<(), ApiError> {
 }
 
 /// What became of a tx recorded before submission.
-enum Pending {
+pub(crate) enum Pending {
     /// It closed successfully: finish without resubmitting.
     Landed,
     /// It failed on-chain or expired off-ledger: it never applied; rebuild.
@@ -106,7 +114,7 @@ enum Pending {
     MayStillLand(u64),
 }
 
-async fn resolve_pending(state: &SharedState, hash: &str, max_time: u64) -> Result<Pending, ApiError> {
+pub(crate) async fn resolve_pending(state: &SharedState, hash: &str, max_time: u64) -> Result<Pending, ApiError> {
     let outcome = state
         .ops
         .horizon
@@ -712,6 +720,13 @@ async fn offramp_build(
     if reconciled.is_empty() {
         return Err(err(StatusCode::NOT_FOUND, "no reconciled collections for deal"));
     }
+    // A batch whose USDC already went to Bridge is no longer "just built".
+    let open = state.offramp.read().await.batches(&deal_id).last().filter(|b| b.status == OffRampStatus::Pending).map(|b| b.batch);
+    if let Some(batch) = open {
+        if state.bridge_sends.read().await.contains_key(&ramp::send_key(&deal_id, batch)) {
+            return Err(err(StatusCode::CONFLICT, format!("batch {batch} was already sent to Bridge; sync it instead of rebuilding")));
+        }
+    }
     let instruction = state
         .offramp
         .write()
@@ -787,7 +802,7 @@ async fn offramp_top_up(
     offramp_response(instruction)
 }
 
-fn offramp_response(instruction: crate::domain::rails::OffRampInstruction) -> Result<Json<Value>, ApiError> {
+pub(crate) fn offramp_response(instruction: crate::domain::rails::OffRampInstruction) -> Result<Json<Value>, ApiError> {
     let shortfall = instruction.shortfall_eur().map_err(|e| err(StatusCode::INTERNAL_SERVER_ERROR, e))?;
     let now_eligible = if instruction.status == OffRampStatus::Executed { instruction.subscription_refs.clone() } else { vec![] };
     Ok(Json(json!({
@@ -1064,10 +1079,12 @@ async fn payout_worklists(
     Ok((schedule, worklists, on_chain_addresses))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 struct DisburseBody {
     /// USDC the treasury bought for the on-chain cohort (at most 2 decimals).
-    usdc_funded: String,
+    /// Omitted: the Bridge-confirmed funding of the deal (funding/sync).
+    #[serde(default)]
+    usdc_funded: Option<String>,
 }
 
 async fn sdp_disburse(
@@ -1078,7 +1095,21 @@ async fn sdp_disburse(
     let key = format!("disbursing deal '{deal_id}'");
     let _guard = state.begin(key.clone()).ok_or_else(|| in_progress(&key))?;
     let (schedule, _, on_chain_addresses) = payout_worklists(&state, &deal_id).await?;
-    let conversion = convert_on_chain(&schedule, &on_chain_addresses, &body.usdc_funded)
+    let confirmed = ramp::confirmed_usdc_funded(&state, &deal_id).await;
+    let usdc_funded = match (body.usdc_funded, confirmed) {
+        (Some(typed), Some(bridge)) if to_stroops(&typed).ok() != to_stroops(&bridge).ok() => {
+            return Err(err(
+                StatusCode::UNPROCESSABLE_ENTITY,
+                format!("usdc_funded {typed} differs from the {bridge} USDC Bridge confirmed for this deal"),
+            ))
+        }
+        (Some(typed), _) => typed,
+        (None, Some(bridge)) => bridge,
+        (None, None) => {
+            return Err(err(StatusCode::UNPROCESSABLE_ENTITY, "usdc_funded is required (no Bridge-confirmed funding for this deal)"))
+        }
+    };
+    let conversion = convert_on_chain(&schedule, &on_chain_addresses, &usdc_funded)
         .map_err(|e| err(StatusCode::UNPROCESSABLE_ENTITY, e))?;
     let files = emit_sdp_files(&deal_id, &conversion.payouts);
 

@@ -1,5 +1,6 @@
 pub mod api;
 pub mod audit;
+pub mod bridge;
 pub mod domain;
 pub mod gate;
 pub mod ops;

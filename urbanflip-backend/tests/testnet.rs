@@ -70,6 +70,13 @@ async fn testnet_lifecycle() {
         session_ttl_secs: 900,
         widget_dir: None,
         widget_frame_ancestors: vec![],
+        bridge_api_url: "https://api.sandbox.bridge.xyz/v0".into(),
+        bridge_api_key: None,
+        bridge_customer_id: None,
+        bridge_sandbox: true,
+        bridge_webhook_public_key: None,
+        collection_secret: None,
+        distribution_address: None,
     };
     let app = start_with(config.clone()).await;
 
@@ -159,6 +166,13 @@ async fn testnet_sponsored_cohort() {
         session_ttl_secs: 900,
         widget_dir: None,
         widget_frame_ancestors: vec![],
+        bridge_api_url: "https://api.sandbox.bridge.xyz/v0".into(),
+        bridge_api_key: None,
+        bridge_customer_id: None,
+        bridge_sandbox: true,
+        bridge_webhook_public_key: None,
+        collection_secret: None,
+        distribution_address: None,
     };
     let app = start_with(config).await;
     let issued = ok(&app, &format!("/v1/deals/{deal}/provision-issuer"), json!({ "asset_code": code })).await;
