@@ -118,3 +118,92 @@ async fn testnet_lifecycle() {
 
     let _ = std::fs::remove_dir_all(state_dir);
 }
+
+/// D2 completion criterion: "20+ sponsored accounts created on testnet with
+/// sponsored trustlines verifiable on-chain". Onboards a cohort through the
+/// API, checks every account on Horizon, and writes an evidence file.
+///
+///   COHORT=22 EVIDENCE_PATH=evidence/d2-sponsored-cohort.json \
+///   cargo test --test testnet testnet_sponsored_cohort -- --ignored --nocapture
+#[tokio::test]
+#[ignore = "hits Stellar testnet; run with --ignored"]
+async fn testnet_sponsored_cohort() {
+    let cohort: usize = std::env::var("COHORT").ok().and_then(|v| v.parse().ok()).unwrap_or(22);
+    let channel = Keypair::random();
+    let funded = reqwest::get(format!("https://friendbot.stellar.org/?addr={}", channel.public_str())).await.unwrap();
+    assert!(funded.status().is_success(), "friendbot: {}", funded.text().await.unwrap_or_default());
+
+    let run = rand::random::<u16>();
+    let (deal, code) = (format!("COHORT-{run}"), format!("UFC{run}"));
+    let config = Config {
+        horizon_url: HORIZON.into(),
+        network_passphrase: PASSPHRASE.into(),
+        home_domain: "urbanflip.io".into(),
+        channel_secret: Some(channel.secret_str()),
+        collection_address: String::new(),
+        usdc_code: "USDC".into(),
+        usdc_issuer: String::new(),
+        spv_iban: "ES9121000418450200051332".into(),
+        bind: "127.0.0.1:0".into(),
+        audit_path: None,
+        state_path: None,
+        state_key: None,
+        gate_provider: "static".into(),
+        gate_url: None,
+        gate_token: None,
+        static_gate_allow: vec![],
+        sdp_base_url: None,
+        sdp_token: None,
+        api_tokens: support::test_api_tokens(),
+        allow_unauthenticated: false,
+        session_ttl_secs: 900,
+        widget_dir: None,
+        widget_frame_ancestors: vec![],
+    };
+    let app = start_with(config).await;
+    let issued = ok(&app, &format!("/v1/deals/{deal}/provision-issuer"), json!({ "asset_code": code })).await;
+    let issuer = issued["issuer"].as_str().unwrap().to_string();
+    println!("channel (sponsor): {}\nissuer: {issuer} ({code})", channel.public_str());
+
+    let mut accounts = Vec::new();
+    for n in 1..=cohort {
+        let investor = format!("cohort-{run}-{n:02}");
+        let onboarded = ok(&app, &format!("/v1/investors/{investor}/onboard"), json!({ "deal_id": deal })).await;
+        let address = onboarded["stellarAddress"].as_str().unwrap().to_string();
+        let account = horizon_account(&address).await;
+        let native = account["balances"].as_array().unwrap().iter().find(|b| b["asset_type"] == "native").unwrap();
+        let trustline = line(&account, &code, &issuer).expect("trustline on-chain");
+        assert_eq!(native["balance"], "0.0000000", "{investor} holds zero XLM");
+        assert_eq!(account["sponsor"], channel.public_str().as_str(), "{investor}'s account is sponsored");
+        assert_eq!(trustline["sponsor"], channel.public_str().as_str(), "{investor}'s trustline is sponsored");
+        println!("{n:02} {address}  {}", explorer(&onboarded["trustlineTxHash"]));
+        accounts.push(json!({
+            "investor": investor,
+            "address": address,
+            "account": format!("https://stellar.expert/explorer/testnet/account/{address}"),
+            "accountCreationTx": explorer(&onboarded["accountCreationTxHash"]),
+            "trustlineTx": explorer(&onboarded["trustlineTxHash"]),
+            "xlmBalance": native["balance"],
+            "accountSponsor": account["sponsor"],
+            "trustlineSponsor": trustline["sponsor"],
+        }));
+    }
+    let evidence = json!({
+        "criterion": "SCF D2 #2: 20+ sponsored accounts created on testnet with sponsored trustlines verifiable on-chain",
+        "network": "testnet",
+        "generatedAt": urbanflip_backend::gate_now(),
+        "channel": channel.public_str(),
+        "issuer": issuer,
+        "asset": code,
+        "issuerProvisioningTx": explorer(&issued["txHash"]),
+        "accounts": accounts,
+    });
+    if let Ok(path) = std::env::var("EVIDENCE_PATH") {
+        if let Some(dir) = std::path::Path::new(&path).parent() {
+            std::fs::create_dir_all(dir).unwrap();
+        }
+        std::fs::write(&path, serde_json::to_string_pretty(&evidence).unwrap()).unwrap();
+        println!("evidence written to {path}");
+    }
+    assert!(cohort >= 20, "the criterion needs 20+ accounts");
+}

@@ -1,0 +1,231 @@
+{
+  "accounts": [
+    {
+      "account": "https://stellar.expert/explorer/testnet/account/GB23ABY7N5IZH3CDX5XOZ6SW44T2A6M57RXEYRPI534EDRASK4PDNRIU",
+      "accountCreationTx": "https://stellar.expert/explorer/testnet/tx/db394a4d919b321935165b903a8f634d1eacb7c640d6291c764cbdd0c9be30cb",
+      "accountSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "address": "GB23ABY7N5IZH3CDX5XOZ6SW44T2A6M57RXEYRPI534EDRASK4PDNRIU",
+      "investor": "cohort-32590-01",
+      "trustlineSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "trustlineTx": "https://stellar.expert/explorer/testnet/tx/1b607d7425fc7de2309ae17f047f45a0edfeb3d938766cfac11d47d3a62fa6ef",
+      "xlmBalance": "0.0000000"
+    },
+    {
+      "account": "https://stellar.expert/explorer/testnet/account/GAIX433SEJK3H6RJTPREJQ2INWSYISKE35VKTVE6B74DYHLFUF3WTXGX",
+      "accountCreationTx": "https://stellar.expert/explorer/testnet/tx/4995b62298373e17f7b19422319fba752042d547ce91e9c8cd602666eed50aca",
+      "accountSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "address": "GAIX433SEJK3H6RJTPREJQ2INWSYISKE35VKTVE6B74DYHLFUF3WTXGX",
+      "investor": "cohort-32590-02",
+      "trustlineSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "trustlineTx": "https://stellar.expert/explorer/testnet/tx/89faf9dccb62d9dfc352c01790b515ccab5f5d3edce76c27b96475844ba384fa",
+      "xlmBalance": "0.0000000"
+    },
+    {
+      "account": "https://stellar.expert/explorer/testnet/account/GBPCD36TMKDMYQAF6DMK72D22D73JY3GALYA6XTWAINXXHGIET2Q6MX6",
+      "accountCreationTx": "https://stellar.expert/explorer/testnet/tx/4a94990d0a3d2f38aeef9a7a25e8431823259012b0422462546f9caaaffaaefa",
+      "accountSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "address": "GBPCD36TMKDMYQAF6DMK72D22D73JY3GALYA6XTWAINXXHGIET2Q6MX6",
+      "investor": "cohort-32590-03",
+      "trustlineSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "trustlineTx": "https://stellar.expert/explorer/testnet/tx/01974e774cb6bb8f377507428be400dabf373de770b5191e5c1806a6edb3d8a0",
+      "xlmBalance": "0.0000000"
+    },
+    {
+      "account": "https://stellar.expert/explorer/testnet/account/GCOTZSTQEIUMIDIDMMAUOEUSQ4BP3C3LWNQSX5ZGPKZVTNQB3ECLKI2R",
+      "accountCreationTx": "https://stellar.expert/explorer/testnet/tx/73aa3e6839fd41da8fa95012a5b5d8318036425ed1f08b046b9d47914c215701",
+      "accountSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "address": "GCOTZSTQEIUMIDIDMMAUOEUSQ4BP3C3LWNQSX5ZGPKZVTNQB3ECLKI2R",
+      "investor": "cohort-32590-04",
+      "trustlineSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "trustlineTx": "https://stellar.expert/explorer/testnet/tx/3c360a07bcbf64bd96d1dee186ba075094eb487951b8bfd6676753892acaf6e2",
+      "xlmBalance": "0.0000000"
+    },
+    {
+      "account": "https://stellar.expert/explorer/testnet/account/GAQG5RHA3DUQOTXSMQ3HZZW6K7FSTYSNN4SITXNMXXFSDQPB6ANQUIQM",
+      "accountCreationTx": "https://stellar.expert/explorer/testnet/tx/400cbb20742b0fa62aea813b49a60a17920e5c1613898287dc7c9fbb2120f678",
+      "accountSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "address": "GAQG5RHA3DUQOTXSMQ3HZZW6K7FSTYSNN4SITXNMXXFSDQPB6ANQUIQM",
+      "investor": "cohort-32590-05",
+      "trustlineSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "trustlineTx": "https://stellar.expert/explorer/testnet/tx/fa6f090a2d35eba634fdda71550a5f7abded777c44b60d737a8e18ae9ba777fa",
+      "xlmBalance": "0.0000000"
+    },
+    {
+      "account": "https://stellar.expert/explorer/testnet/account/GAK4EQQGNCHYPERQPMFS6JCS7PAQO6OK53ELIND43VZOVQTAPOGH3TUK",
+      "accountCreationTx": "https://stellar.expert/explorer/testnet/tx/308a6a9fa96512061d4194121643a0f6cedd23af2642730a36dec1ab9e18332c",
+      "accountSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "address": "GAK4EQQGNCHYPERQPMFS6JCS7PAQO6OK53ELIND43VZOVQTAPOGH3TUK",
+      "investor": "cohort-32590-06",
+      "trustlineSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "trustlineTx": "https://stellar.expert/explorer/testnet/tx/b87bc86af96151031bdf595b74f2f2878f2bd960d55da487e7cf752a3d46f513",
+      "xlmBalance": "0.0000000"
+    },
+    {
+      "account": "https://stellar.expert/explorer/testnet/account/GBIRO5R2O7IMU75V3V6G3XWJIAEP4SN5SVQDLOB4IJDPPSDPFPC2ECZT",
+      "accountCreationTx": "https://stellar.expert/explorer/testnet/tx/fa27bd10ed6e6d792145aa7d27680c7447a45a5d0b541d85608f68676375e379",
+      "accountSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "address": "GBIRO5R2O7IMU75V3V6G3XWJIAEP4SN5SVQDLOB4IJDPPSDPFPC2ECZT",
+      "investor": "cohort-32590-07",
+      "trustlineSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "trustlineTx": "https://stellar.expert/explorer/testnet/tx/a4c7a2b14d8c59f59b4b7ad7a442c3e4711a7721d9be78d7918fa62a6ccaac14",
+      "xlmBalance": "0.0000000"
+    },
+    {
+      "account": "https://stellar.expert/explorer/testnet/account/GBHEGFO4YPRL4XQGI5MR7VM4IAMDHEVZU3BUYPP6S452EHPUYNCDLIS6",
+      "accountCreationTx": "https://stellar.expert/explorer/testnet/tx/90dbb407066c31269f78e546151e8ba04f1bae2ad22dcc5b0f35a9b7c790e50e",
+      "accountSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "address": "GBHEGFO4YPRL4XQGI5MR7VM4IAMDHEVZU3BUYPP6S452EHPUYNCDLIS6",
+      "investor": "cohort-32590-08",
+      "trustlineSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "trustlineTx": "https://stellar.expert/explorer/testnet/tx/feefedd161311af52f476f256b173b316223ed2d74f460b1c79b0b7d6e3f61aa",
+      "xlmBalance": "0.0000000"
+    },
+    {
+      "account": "https://stellar.expert/explorer/testnet/account/GDK3VX2OYVHCRABTWOR2VV7R4ORCCGH6LN62R4IR3ZICPPXNFDZNUPH2",
+      "accountCreationTx": "https://stellar.expert/explorer/testnet/tx/50e4f811238951fbb9f356526dfaffa666fa48971e278b0944dca0faec393801",
+      "accountSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "address": "GDK3VX2OYVHCRABTWOR2VV7R4ORCCGH6LN62R4IR3ZICPPXNFDZNUPH2",
+      "investor": "cohort-32590-09",
+      "trustlineSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "trustlineTx": "https://stellar.expert/explorer/testnet/tx/bdc68ffa84bf7d4ad33024d73b8d32d11fb6ce6477453219a6430db4a329ef08",
+      "xlmBalance": "0.0000000"
+    },
+    {
+      "account": "https://stellar.expert/explorer/testnet/account/GB5RYQVDQL4AZFJOSRQDX3BD7WZGGB55ZCI34XIWG5D4RDFGMICCXMGU",
+      "accountCreationTx": "https://stellar.expert/explorer/testnet/tx/77e88ac9e958c7dfff05ee0190ab64da382fb86d7381d40ab52c08f1ca3e982c",
+      "accountSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "address": "GB5RYQVDQL4AZFJOSRQDX3BD7WZGGB55ZCI34XIWG5D4RDFGMICCXMGU",
+      "investor": "cohort-32590-10",
+      "trustlineSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "trustlineTx": "https://stellar.expert/explorer/testnet/tx/0a743994d62ed8b0a4e5bdf381299eef5646016cd3ba4c41af3ef88618b3856d",
+      "xlmBalance": "0.0000000"
+    },
+    {
+      "account": "https://stellar.expert/explorer/testnet/account/GD27AOH4AELGQJEWX7Y6GDQUYUXC2MOJC3SD56LQNHXCGCOL4R3W3YZL",
+      "accountCreationTx": "https://stellar.expert/explorer/testnet/tx/e13e31a3b6235a76503f0b67c7b5a497d0c77a2d883dcd4c166ba0317326465d",
+      "accountSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "address": "GD27AOH4AELGQJEWX7Y6GDQUYUXC2MOJC3SD56LQNHXCGCOL4R3W3YZL",
+      "investor": "cohort-32590-11",
+      "trustlineSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "trustlineTx": "https://stellar.expert/explorer/testnet/tx/ecd3317cb22e52bf351c554eb8a3acc3b825ac746610e0732776ef603c4610b5",
+      "xlmBalance": "0.0000000"
+    },
+    {
+      "account": "https://stellar.expert/explorer/testnet/account/GCQV2J6TIWPKY4X3MWUQEZ3V5A27WWACFQ5BYAWL7Z3F7ELDWI23TRRV",
+      "accountCreationTx": "https://stellar.expert/explorer/testnet/tx/bb574786fa1d3c71e04ec8e953b7e3edf878869a4a298346466b8e7969d2f8e8",
+      "accountSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "address": "GCQV2J6TIWPKY4X3MWUQEZ3V5A27WWACFQ5BYAWL7Z3F7ELDWI23TRRV",
+      "investor": "cohort-32590-12",
+      "trustlineSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "trustlineTx": "https://stellar.expert/explorer/testnet/tx/b5f09c5f65ad327dac0a1539bfdb8db15302df1f9c5cc5cfc57df13d3f7c7145",
+      "xlmBalance": "0.0000000"
+    },
+    {
+      "account": "https://stellar.expert/explorer/testnet/account/GB5C3M6G7NGRIGTMU2276ZRKQIG4WKMHPI4VTVEO7UIVJ4AFLTTPGIZE",
+      "accountCreationTx": "https://stellar.expert/explorer/testnet/tx/cfc26903f19bdafdab128bdbd354413d4a6564d1b7eed6e0a32bfae0f8c5d3f7",
+      "accountSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "address": "GB5C3M6G7NGRIGTMU2276ZRKQIG4WKMHPI4VTVEO7UIVJ4AFLTTPGIZE",
+      "investor": "cohort-32590-13",
+      "trustlineSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "trustlineTx": "https://stellar.expert/explorer/testnet/tx/dc7986f4e3257a8b18d831cc0f8176acf502c46ed0ca02578f2e654e0de325dc",
+      "xlmBalance": "0.0000000"
+    },
+    {
+      "account": "https://stellar.expert/explorer/testnet/account/GDDSI6I67BJ32V62DYGUBNN354YFKZPCPJKESOUVAOI3YMKDPZQWJRH6",
+      "accountCreationTx": "https://stellar.expert/explorer/testnet/tx/da1f57a454654888cee0e618ce51548c1d486426ed55df39b001d61a93719e72",
+      "accountSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "address": "GDDSI6I67BJ32V62DYGUBNN354YFKZPCPJKESOUVAOI3YMKDPZQWJRH6",
+      "investor": "cohort-32590-14",
+      "trustlineSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "trustlineTx": "https://stellar.expert/explorer/testnet/tx/f61d8241878574864dc5064285a3b3a5157a901812145cbe6b16c1cdeaa3ab98",
+      "xlmBalance": "0.0000000"
+    },
+    {
+      "account": "https://stellar.expert/explorer/testnet/account/GCUN4VMN3LPJE6T3KDZF2NVNNN7U5ALV2GR64S6FS4KYS4TP5ZSPFST4",
+      "accountCreationTx": "https://stellar.expert/explorer/testnet/tx/bc3ec8fddec9a9e17de163bb0659ccb07c2e2978e08d778d81e7dec3d0e1dc09",
+      "accountSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "address": "GCUN4VMN3LPJE6T3KDZF2NVNNN7U5ALV2GR64S6FS4KYS4TP5ZSPFST4",
+      "investor": "cohort-32590-15",
+      "trustlineSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "trustlineTx": "https://stellar.expert/explorer/testnet/tx/992d2f4d7a3c76afec9c03d37c3e9dda6b4061c874d7fcb804dc8aceec82d36c",
+      "xlmBalance": "0.0000000"
+    },
+    {
+      "account": "https://stellar.expert/explorer/testnet/account/GDXGLBTG2TGI6RGOOURH7CDDK7GBXMFPFVWMBD6NUVIE366VQVZCZASD",
+      "accountCreationTx": "https://stellar.expert/explorer/testnet/tx/e4533eb976b86abc16c158ff127ee6aafbd4cff7474a99cfde33506863e33ff1",
+      "accountSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "address": "GDXGLBTG2TGI6RGOOURH7CDDK7GBXMFPFVWMBD6NUVIE366VQVZCZASD",
+      "investor": "cohort-32590-16",
+      "trustlineSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "trustlineTx": "https://stellar.expert/explorer/testnet/tx/f7846b932f1801a583b74f3b5f8b00090dbcfb85d230538b02f1eb2e4887ad97",
+      "xlmBalance": "0.0000000"
+    },
+    {
+      "account": "https://stellar.expert/explorer/testnet/account/GC5VO7OOUXKOXOBIMXDFMGC6ZJDE3CMQB5EZPJHQ446CC6CHL2SXIWUF",
+      "accountCreationTx": "https://stellar.expert/explorer/testnet/tx/95c459e7499f619372cf7f02d5d7b18188fc43c33bddd7ac6f23a4bfabde3c43",
+      "accountSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "address": "GC5VO7OOUXKOXOBIMXDFMGC6ZJDE3CMQB5EZPJHQ446CC6CHL2SXIWUF",
+      "investor": "cohort-32590-17",
+      "trustlineSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "trustlineTx": "https://stellar.expert/explorer/testnet/tx/9c8d9cfb0a8e74a0be14774c299713fd1819a4b3c48dc39787bf6e4300f9885b",
+      "xlmBalance": "0.0000000"
+    },
+    {
+      "account": "https://stellar.expert/explorer/testnet/account/GADT6HF6MEBMCBQV4D6HI3E2T4WG3ULLBZKTKNUXMJJ3RMXDIZN5EWDW",
+      "accountCreationTx": "https://stellar.expert/explorer/testnet/tx/034541fa71dbfb898a4e33001ee6da395e99c1d41f975ea79fc77643158fd956",
+      "accountSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "address": "GADT6HF6MEBMCBQV4D6HI3E2T4WG3ULLBZKTKNUXMJJ3RMXDIZN5EWDW",
+      "investor": "cohort-32590-18",
+      "trustlineSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "trustlineTx": "https://stellar.expert/explorer/testnet/tx/66e2f3df9aefdf359d9fefe64ec941b69830cbb82b8bf250b7a0a02089a31185",
+      "xlmBalance": "0.0000000"
+    },
+    {
+      "account": "https://stellar.expert/explorer/testnet/account/GB6VHSD3OFLFBGAHNQIFEBPLNPMBY3PLBXCMMXCNA2YZII6JRYKCQ5SX",
+      "accountCreationTx": "https://stellar.expert/explorer/testnet/tx/6ce3740b75d5014c91ac21b43a78924a81ff33aee41b73a04afa8c98efe03572",
+      "accountSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "address": "GB6VHSD3OFLFBGAHNQIFEBPLNPMBY3PLBXCMMXCNA2YZII6JRYKCQ5SX",
+      "investor": "cohort-32590-19",
+      "trustlineSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "trustlineTx": "https://stellar.expert/explorer/testnet/tx/fc17626ff0a36736a56d76a1ff2e13ae41e98f23d86a0a32f8fbaa2a5d3136c9",
+      "xlmBalance": "0.0000000"
+    },
+    {
+      "account": "https://stellar.expert/explorer/testnet/account/GC3CKU3TNKZINQDTFUW4HP24PRUFKKC3HZQMO7ICIBJFXADY3HPMUN6Y",
+      "accountCreationTx": "https://stellar.expert/explorer/testnet/tx/8914eef1e3964594d0abb3d243ec5246687c98aa523671b537015cd9a65eb7b3",
+      "accountSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "address": "GC3CKU3TNKZINQDTFUW4HP24PRUFKKC3HZQMO7ICIBJFXADY3HPMUN6Y",
+      "investor": "cohort-32590-20",
+      "trustlineSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "trustlineTx": "https://stellar.expert/explorer/testnet/tx/8bfb4fcc82a13e172ba2744b1f2ef17d311abc10c24938715a64756b3b1b7214",
+      "xlmBalance": "0.0000000"
+    },
+    {
+      "account": "https://stellar.expert/explorer/testnet/account/GCZN6W7CCQUNN2MMBM3R3T3ZBBVG3D6R32QYT4O3OA5ZC2IJIYJWYOFS",
+      "accountCreationTx": "https://stellar.expert/explorer/testnet/tx/b55de54eaa74a03897635584c2de87b7408b8eeec2391e489e3eb75f9b6e5aae",
+      "accountSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "address": "GCZN6W7CCQUNN2MMBM3R3T3ZBBVG3D6R32QYT4O3OA5ZC2IJIYJWYOFS",
+      "investor": "cohort-32590-21",
+      "trustlineSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "trustlineTx": "https://stellar.expert/explorer/testnet/tx/11bb090704417bc926a1131366618349a74ebdbb25c5b949e86fe4d19a4c3117",
+      "xlmBalance": "0.0000000"
+    },
+    {
+      "account": "https://stellar.expert/explorer/testnet/account/GCCEMZQSFKKEECRN4NLVTVZNJE7JVY2RJMHT5FY4BQDDBZEVP235ZOKE",
+      "accountCreationTx": "https://stellar.expert/explorer/testnet/tx/a9f6d505f330cc4157e2cde0eabb04c64ddc7b5a9b817e597e533a247df79aa7",
+      "accountSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "address": "GCCEMZQSFKKEECRN4NLVTVZNJE7JVY2RJMHT5FY4BQDDBZEVP235ZOKE",
+      "investor": "cohort-32590-22",
+      "trustlineSponsor": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+      "trustlineTx": "https://stellar.expert/explorer/testnet/tx/c21ac86a29d12888fa0dfd5a728d28a4f7241d2a684a46ae80ce897a0bbb81a3",
+      "xlmBalance": "0.0000000"
+    }
+  ],
+  "asset": "UFC32590",
+  "channel": "GAXPAR6ZNO3W4DODL4GB2UVNQYQ7MJY73XMDWDMJRTYY3NJXUMI2CBNP",
+  "criterion": "SCF D2 #2: 20+ sponsored accounts created on testnet with sponsored trustlines verifiable on-chain",
+  "generatedAt": "2026-10-24T00:21:13.015Z",
+  "issuer": "GAKW47BIEXEXB2HY766F4AZF3Y5TTEZASFWQHDFCGVV7AHN3KEOVHE3T",
+  "issuerProvisioningTx": "https://stellar.expert/explorer/testnet/tx/948f5de0f73cacbd4b7dbd7639b7c8506797e7fe36c8c7552bae915f7a589505",
+  "network": "testnet"
+}

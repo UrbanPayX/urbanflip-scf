@@ -195,6 +195,12 @@ cargo test --test testnet -- --ignored --nocapture  # live testnet rehearsal (~9
   didn't, and slow submissions. It covers the lifecycle, double-mint
   safety, restart from sealed state, issuer adoption, input validation,
   counterfeit-asset rejection, off-ramp batches and SDP idempotency.
+- **`testnet_sponsored_cohort`** (in `tests/testnet.rs`, ignored by default)
+  onboards a cohort through the API and checks each account on Horizon:
+  zero XLM, account and trustline sponsored by the channel. It writes the
+  evidence for D2 criterion 2 (`COHORT=22 EVIDENCE_PATH=evidence/... cargo
+  test --test testnet testnet_sponsored_cohort -- --ignored`); the 22-account
+  run is in `evidence/d2-sponsored-cohort-testnet.json`.
 - **`tests/testnet.rs`** funds a channel through friendbot and runs the D1/D2
   lifecycle on the real testnet, including a restart from the state file. It
   asserts each effect on Horizon and prints stellar.expert links for evidence.
