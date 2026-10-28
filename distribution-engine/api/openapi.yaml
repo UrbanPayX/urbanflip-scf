@@ -1,14 +1,148 @@
 openapi: 3.1.0
 info:
   title: Urbanflip Distribution Engine
-  version: 0.1.0
+  version: 0.2.0
   description: >
     Pro-rata distribution computation for deal payouts (SCF #45 D3).
-    Computes per-investor EUR schedules from the loan ledger (principal +
-    performance interest), converts them at the USDC the treasury actually
-    bought and emits SDP-ready USDC payment files, pre-checks destination
-    trustlines, and replays historical payouts exactly.
+    Computes per-investor EUR settlements with Urbanflip's participative-loan
+    waterfall (fixed tranche + pro-rata share of the variable profit, less
+    success fee and withholding), converts them at the USDC the treasury
+    actually bought and emits SDP-ready USDC payment files, pre-checks
+    destination trustlines, and replays completed deals' recorded payouts to
+    the cent. All amounts are EUR decimal strings with at most 2 decimals,
+    computed in exact integer arithmetic (no floats).
 paths:
+  /v1/deals/{dealId}/waterfall:
+    post:
+      summary: Compute a deal's settlement with the participative-loan waterfall
+      description: >
+        Per position: fixed interest (contract rate, act/365 or 2-decimal
+        months), variable interest (share of variablePool by capital or
+        capital x days), fee (share of feePool by the same weight x feeShare),
+        interest after fee, withholding on it, and net = principal + interest
+        after fee - withholding. With rounding largest-remainder (the default)
+        the rows sum to the pools exactly and the result becomes the schedule
+        that /v1/distributions/{dealId}/sdp-files pays (each investor's net).
+        per-row-half-up is the platform's legacy convention, used for replays;
+        such a result is returned with payable false and never paid.
+      parameters: [{ name: dealId, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [deal]
+              properties:
+                deal: { $ref: '#/components/schemas/WaterfallDeal' }
+                adjustments:
+                  type: array
+                  items: { $ref: '#/components/schemas/Adjustment' }
+      responses:
+        '200':
+          description: settlement per position, totals, residual per pool
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dealId: { type: string }
+                  rounding: { type: string, enum: [per-row-half-up, largest-remainder] }
+                  payable: { type: boolean, description: true when stored for sdp-files (largest-remainder) }
+                  rows:
+                    type: array
+                    items: { $ref: '#/components/schemas/SettlementRow' }
+                  totals: { $ref: '#/components/schemas/Components' }
+                  residual:
+                    type: object
+                    description: pool minus what the rule allocated, before adjustments (0.00 under largest-remainder)
+                    properties:
+                      variable: { type: string }
+                      fee: { type: string }
+        '400': { description: 'validation error: bad date, amount finer than a cent, rate above 1, duplicate investor, pool with no bearer, fee above interest, unattributable adjustment, invalid wallet' }
+  /v1/deals/{dealId}/waterfall/replay:
+    post:
+      summary: Replay a completed deal against its recorded settlements, every component to the cent
+      description: >
+        D3 acceptance criterion 2. Recomputes the deal and diffs principal,
+        fixed interest, variable interest, fee, interest after fee, withholding
+        and net for every recorded settlement. Manual corrections made at
+        settlement time enter only as adjustments (with reason) and are
+        reported beside the rule's figure; positions without a record must be
+        declared in unrecorded (with reason), never skipped silently.
+      parameters: [{ name: dealId, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [deal, recorded]
+              properties:
+                deal: { $ref: '#/components/schemas/WaterfallDeal' }
+                recorded:
+                  type: array
+                  items:
+                    allOf:
+                      - type: object
+                        required: [investorId]
+                        properties: { investorId: { type: string } }
+                      - $ref: '#/components/schemas/Components'
+                adjustments:
+                  type: array
+                  items: { $ref: '#/components/schemas/Adjustment' }
+                unrecorded:
+                  type: array
+                  items:
+                    type: object
+                    required: [investorId, reason]
+                    properties:
+                      investorId: { type: string }
+                      reason: { type: string }
+      responses:
+        '200':
+          description: replay report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dealId: { type: string }
+                  match: { type: boolean, description: every compared value equal to the cent }
+                  comparedRows: { type: integer }
+                  comparedValues: { type: integer, description: comparedRows x 7 components }
+                  diffs:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        investorId: { type: string }
+                        component: { type: string, enum: [principal, fixedInterest, variableInterest, fee, interestAfterFee, withholding, net] }
+                        recorded: { type: string }
+                        computed: { type: string }
+                        delta: { type: string }
+                  recordedTotals: { $ref: '#/components/schemas/Components' }
+                  computedTotals: { $ref: '#/components/schemas/Components' }
+                  adjustments:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        investorId: { type: string }
+                        component: { type: string }
+                        rule: { type: string, description: what the rule gives }
+                        applied: { type: string, description: what was paid instead }
+                        reason: { type: string }
+                  unrecorded:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        investorId: { type: string }
+                        reason: { type: string }
+                        computed: { $ref: '#/components/schemas/SettlementRow' }
+                  result: { description: the full computed settlement (as /waterfall returns it) }
+        '400': { description: 'validation error, a record for an unknown investor or listed twice, a position with neither record nor declaration, an amount finer than a cent' }
   /v1/deals/{dealId}/ledger:
     post:
       summary: Register a deal's loan ledger (positions)
@@ -189,3 +323,89 @@ paths:
       responses:
         '200':
           description: per-address state (READY | NO_ACCOUNT | TRUSTLINE_MISSING | TRUSTLINE_UNAUTHORIZED)
+components:
+  schemas:
+    Amount:
+      type: string
+      pattern: '^\d+(\.\d{1,2})?$'
+      description: EUR, at most 2 decimals
+    Rate:
+      type: string
+      pattern: '^\d+(\.\d{1,12})?$'
+      description: exact decimal, between 0 and 1
+    WaterfallDeal:
+      type: object
+      required: [endDate, fixedAccrual, variableWeighting, variablePool, feePool, positions]
+      properties:
+        endDate: { type: string, format: date, description: payout date; interest accrues up to it }
+        fixedAccrual:
+          oneOf:
+            - type: object
+              required: [basis]
+              properties: { basis: { const: act/365 } }
+              description: principal x rate x days / 365
+            - type: object
+              required: [basis, daysPerMonth, inclusiveDays]
+              properties:
+                basis: { const: months }
+                daysPerMonth: { type: string, example: '30.4375' }
+                inclusiveDays: { type: boolean, description: count the payout day too }
+              description: months = round(days / daysPerMonth, 2); interest = principal x rate / 12 x months
+        variableWeighting: { type: string, enum: [capital, capital-days] }
+        variablePool: { $ref: '#/components/schemas/Amount' }
+        feePool: { $ref: '#/components/schemas/Amount' }
+        rounding: { type: string, enum: [largest-remainder, per-row-half-up], default: largest-remainder }
+        positions:
+          type: array
+          items:
+            type: object
+            required: [investorId, startDate, fixedPrincipal, variablePrincipal, terms]
+            properties:
+              investorId: { type: string }
+              startDate: { type: string, format: date }
+              fixedPrincipal: { $ref: '#/components/schemas/Amount' }
+              variablePrincipal: { $ref: '#/components/schemas/Amount' }
+              terms:
+                type: object
+                required: [fixedRate, feeShare, withholdingRate]
+                properties:
+                  fixedRate: { $ref: '#/components/schemas/Rate' }
+                  feeShare: { $ref: '#/components/schemas/Rate' }
+                  withholdingRate: { $ref: '#/components/schemas/Rate' }
+              email: { type: string, description: SDP receiver id; required with a walletAddress }
+              walletAddress: { type: string, description: Stellar account (G... StrKey) }
+    Adjustment:
+      type: object
+      required: [investorId, component, amount, reason]
+      properties:
+        investorId: { type: string }
+        component: { type: string, enum: [fixedInterest, variableInterest, fee, withholding] }
+        amount: { $ref: '#/components/schemas/Amount' }
+        reason: { type: string }
+    Components:
+      type: object
+      properties:
+        principal: { $ref: '#/components/schemas/Amount' }
+        fixedInterest: { $ref: '#/components/schemas/Amount' }
+        variableInterest: { $ref: '#/components/schemas/Amount' }
+        fee: { $ref: '#/components/schemas/Amount' }
+        interestAfterFee: { $ref: '#/components/schemas/Amount' }
+        withholding: { $ref: '#/components/schemas/Amount' }
+        net: { $ref: '#/components/schemas/Amount' }
+    SettlementRow:
+      allOf:
+        - type: object
+          properties:
+            investorId: { type: string }
+            days: { type: integer }
+            grossInterest: { $ref: '#/components/schemas/Amount' }
+            adjustments:
+              type: array
+              items:
+                type: object
+                properties:
+                  component: { type: string }
+                  rule: { type: string }
+                  applied: { type: string }
+                  reason: { type: string }
+        - $ref: '#/components/schemas/Components'

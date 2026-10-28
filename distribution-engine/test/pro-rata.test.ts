@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { computeDistribution } from '../src/compute/pro-rata';
+import { allocate, computeDistribution } from '../src/compute/pro-rata';
 import type { DealLedger, DealOutcome } from '../src/compute/pro-rata';
 import { replayDeal } from '../src/compute/replay';
-import { toStroops } from '../src/money/stroops';
+import { fromStroops, toStroops } from '../src/money/stroops';
 
 interface Fixture {
   ledger: DealLedger;
@@ -107,7 +107,9 @@ describe('pro-rata computation', () => {
   });
 });
 
-describe('historical replay — 3 completed deals, exact reproduction (acceptance criterion)', () => {
+// Synthetic ledgers for the simple principal + interest model; the acceptance
+// replay on the three real deals is in waterfall.test.ts.
+describe('replay of synthetic deals (simple pro-rata model)', () => {
   for (const deal of THREE_DEALS) {
     it(`${deal}: recomputed rows equal the recorded bank payouts to the cent`, () => {
       const fx = loadFixture(deal);
@@ -133,5 +135,54 @@ describe('historical replay — 3 completed deals, exact reproduction (acceptanc
     expect(report.match).toBe(false);
     expect(report.diffs).toHaveLength(1);
     expect(Math.abs(Number(report.diffs[0]!.deltaStroops))).toBe(100000); // one cent in stroops
+  });
+});
+
+describe('guards of the simple model', () => {
+  const ledger: DealLedger = {
+    dealId: 'd',
+    positions: [
+      { investorId: 'i1', email: 'a@x.y', principal: '100.00' },
+      { investorId: 'i2', email: 'b@x.y', principal: '50.00' },
+    ],
+  };
+  const outcome: DealOutcome = { principalRepayment: '150.00', performanceInterest: '15.00' };
+  const opts = { decimals: 2 };
+
+  it('refuses an empty ledger and a zero total weight', () => {
+    expect(() => computeDistribution({ dealId: 'd', positions: [] }, outcome)).toThrow(/no positions/);
+    expect(() => allocate(1n, [0n, 0n], 'largest-remainder', ['a', 'b'])).toThrow(/weight is zero/);
+  });
+
+  it('breaks remainder ties by investorId whatever the input order', () => {
+    expect(allocate(2n, [1n, 1n, 1n], 'largest-remainder', ['c', 'a', 'b'])).toEqual([0n, 1n, 1n]);
+    expect(allocate(2n, [1n, 1n, 1n], 'largest-remainder', ['b', 'c', 'a'])).toEqual([1n, 0n, 1n]);
+  });
+
+  it('replay refuses a record that misses or adds investors, or is not in cents', () => {
+    expect(() => replayDeal(ledger, outcome, [{ investorId: 'i1', amount: '110.00' }], opts)).toThrow(
+      /historical record missing investor 'i2'/,
+    );
+    expect(() =>
+      replayDeal(
+        ledger,
+        outcome,
+        [
+          { investorId: 'i1', amount: '110.00' },
+          { investorId: 'i2', amount: '55.00' },
+          { investorId: 'i3', amount: '1.00' },
+        ],
+        opts,
+      ),
+    ).toThrow(/unknown investor 'i3'/);
+    expect(() =>
+      replayDeal(ledger, outcome, [{ investorId: 'i1', amount: '110.001' }, { investorId: 'i2', amount: '55' }], opts),
+    ).toThrow(/invalid recorded payout amount '110.001'/);
+    const whole = replayDeal(ledger, outcome, [{ investorId: 'i1', amount: '110' }, { investorId: 'i2', amount: '55.0' }], opts);
+    expect(whole.match).toBe(true);
+  });
+
+  it('formats negative stroop amounts', () => {
+    expect(fromStroops(-15n)).toBe('-0.0000015');
   });
 });

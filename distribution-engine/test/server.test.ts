@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { StrKey } from '@stellar/stellar-sdk';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { AddressInfo } from 'node:net';
@@ -136,5 +138,83 @@ describe('HTTP API (implements api/openapi.yaml)', () => {
 
     const badRoute = await fetch(`${base}/v1/other`, { method: 'POST' });
     expect(badRoute.status).toBe(404);
+  });
+});
+
+describe('HTTP API: Urbanflip waterfall', () => {
+  const post = (base: string, path: string, body: unknown) =>
+    fetch(`${base}${path}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  const terms = { fixedRate: '0.08', feeShare: '1', withholdingRate: '0.19' };
+  const DEAL = {
+    endDate: '2025-09-17',
+    fixedAccrual: { basis: 'act/365' },
+    variableWeighting: 'capital-days',
+    variablePool: '3150.25',
+    feePool: '1175.35',
+    positions: [
+      {
+        investorId: 'inv-1',
+        startDate: '2025-03-09',
+        fixedPrincipal: '10000.00',
+        variablePrincipal: '10000.00',
+        terms,
+        email: 'one@example.com',
+        walletAddress: WALLET_1,
+      },
+    ],
+  };
+
+  it('computes a payable waterfall and emits its SDP file', async () => {
+    const base = await start();
+    const res = await post(base, '/v1/deals/UF-7/waterfall', { deal: DEAL });
+    const result = (await res.json()) as { payable: boolean; rows: Array<Record<string, unknown>> };
+    expect(res.status).toBe(200);
+    expect(result.payable).toBe(true);
+    // the same figures the platform paid a 10,000 + 10,000 position in Velázquez 87
+    expect(result.rows[0]).toMatchObject({
+      fixedInterest: '420.82',
+      variableInterest: '3150.25',
+      fee: '1175.35',
+      interestAfterFee: '2395.72',
+      withholding: '455.19',
+      net: '21940.53',
+    });
+    const sdp = await post(base, '/v1/distributions/UF-7/sdp-files', { usdcFunded: '23805.48' });
+    const files = (await sdp.json()) as { files: Array<{ content: string }> };
+    expect(sdp.status).toBe(200);
+    expect(files.files[0]!.content).toContain(`23805.48,one@example.com,${WALLET_1}`);
+  });
+
+  it('returns a legacy per-row result without making it payable', async () => {
+    const base = await start();
+    const res = await post(base, '/v1/deals/UF-8/waterfall', { deal: { ...DEAL, rounding: 'per-row-half-up' } });
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { payable: boolean }).payable).toBe(false);
+    expect((await post(base, '/v1/distributions/UF-8/sdp-files', { usdcFunded: '1.00' })).status).toBe(404);
+  });
+
+  it('replays a real deal over HTTP', async () => {
+    const base = await start();
+    const fx = JSON.parse(readFileSync(join(__dirname, '../fixtures/real/orense-9.json'), 'utf8')) as Record<string, unknown>;
+    const res = await post(base, '/v1/deals/orense-9/waterfall/replay', fx);
+    const report = (await res.json()) as { match: boolean; comparedValues: number; recordedTotals: { net: string } };
+    expect(res.status).toBe(200);
+    expect(report.match).toBe(true);
+    expect(report.comparedValues).toBe(357);
+    expect(report.recordedTotals.net).toBe('1949852.50');
+  });
+
+  it('refuses malformed waterfall requests', async () => {
+    const base = await start();
+    expect((await post(base, '/v1/deals/x/waterfall', {})).status).toBe(400);
+    const badWallet = { ...DEAL, positions: [{ ...DEAL.positions[0]!, walletAddress: 'GNOPE' }] };
+    expect((await post(base, '/v1/deals/x/waterfall', { deal: badWallet })).status).toBe(400);
+    const noRecord = await post(base, '/v1/deals/x/waterfall/replay', { deal: DEAL });
+    expect(noRecord.status).toBe(400);
+    expect(((await noRecord.json()) as { error: string }).error).toContain('recorded must be an array');
   });
 });

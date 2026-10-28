@@ -1,6 +1,8 @@
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http';
 import { computeDistribution } from '../compute/pro-rata';
 import { replayDeal, type HistoricalPayout } from '../compute/replay';
+import { computeWaterfall, eurJson, toDistributionSchedule, type WaterfallAdjustment, type WaterfallDeal } from '../compute/waterfall';
+import { replayWaterfall, type RecordedSettlement, type UnrecordedPosition } from '../compute/waterfall-replay';
 import { emitSdpFiles } from '../emit/sdp-csv';
 import { assertStellarAddress, convertOnChain } from '../emit/usdc-conversion';
 import { TrustlineChecker } from '../trustline/checker';
@@ -38,6 +40,31 @@ export function createEngineServer(options: EngineServerOptions = {}): Server {
         ledger.dealId = parts[2]!;
         ledgers.set(ledger.dealId, ledger);
         return json(res, 201, { stored: ledger.positions.length, dealId: ledger.dealId });
+      }
+
+      if (req.method === 'POST' && parts[1] === 'deals' && parts[3] === 'waterfall' && parts[4] === 'replay') {
+        const { deal, recorded, adjustments, unrecorded } = (body ?? {}) as {
+          deal: Omit<WaterfallDeal, 'dealId'>;
+          recorded: RecordedSettlement[];
+          adjustments?: WaterfallAdjustment[];
+          unrecorded?: UnrecordedPosition[];
+        };
+        if (!Array.isArray(recorded)) return json(res, 400, { error: 'recorded must be an array of settlements' });
+        const report = replayWaterfall(waterfallDeal(deal, parts[2]!), recorded, { adjustments, unrecorded });
+        return json(res, 200, eurJson(report));
+      }
+
+      if (req.method === 'POST' && parts[1] === 'deals' && parts[3] === 'waterfall' && parts.length === 4) {
+        const { deal, adjustments } = (body ?? {}) as {
+          deal: Omit<WaterfallDeal, 'dealId'>;
+          adjustments?: WaterfallAdjustment[];
+        };
+        const result = computeWaterfall(waterfallDeal(deal, parts[2]!), { adjustments });
+        // Only an exact (largest-remainder) result can be paid: it becomes the
+        // schedule sdp-files converts; a legacy per-row result is returned only.
+        const payable = result.rounding === 'largest-remainder';
+        if (payable) schedules.set(`${parts[2]}:latest`, toDistributionSchedule(result));
+        return json(res, 200, { ...(eurJson(result) as object), payable });
       }
 
       if (req.method === 'POST' && parts[1] === 'deals' && parts[3] === 'distributions' && parts[4] === 'replay') {
@@ -103,6 +130,14 @@ export function createEngineServer(options: EngineServerOptions = {}): Server {
       return json(res, 400, { error: (err as Error).message });
     }
   });
+
+  function waterfallDeal(deal: Omit<WaterfallDeal, 'dealId'> | undefined, dealId: string): WaterfallDeal {
+    if (!Array.isArray(deal?.positions)) throw new Error('deal.positions must be an array');
+    for (const p of deal.positions) {
+      if (p.walletAddress !== undefined) assertStellarAddress(p.walletAddress, p.investorId);
+    }
+    return { ...deal, dealId };
+  }
 
   function requireLedger(map: Map<string, DealLedger>, dealId: string): DealLedger {
     const ledger = map.get(dealId);

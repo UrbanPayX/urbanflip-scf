@@ -46,3 +46,25 @@ export function displayAmount(stroops: bigint, minDecimals = 2): string {
   const keep = Math.max(minDecimals, Math.min(trimmed.length, MAX_DECIMALS));
   return `${int}.${frac!.slice(0, keep).padEnd(keep, '0')}`;
 }
+
+/** '0.19' -> [19n, 100n]: an exact decimal rate as numerator/denominator (non-negative, <= 12 decimals). */
+export function toRatio(decimal: string): readonly [bigint, bigint] {
+  if (!/^\d+(\.\d{1,12})?$/.test(decimal)) {
+    throw new Error(`invalid decimal rate '${decimal}' (expected non-negative, <= 12 decimals)`);
+  }
+  const [int, frac = ''] = decimal.split('.');
+  return [BigInt(int! + frac), 10n ** BigInt(frac.length)];
+}
+
+/** n / d rounded half up, for n >= 0 and d > 0: the rounding a bank ledger applies to each computed row. */
+export function divHalfUp(n: bigint, d: bigint): bigint {
+  if (n < 0n || d <= 0n) throw new Error(`divHalfUp expects n >= 0 and d > 0 (got ${n}/${d})`);
+  return (2n * n + d) / (2n * d);
+}
+
+/** 123456n cents -> '1234.56' (negative amounts keep their sign: -5n -> '-0.05'). */
+export function formatCents(cents: bigint): string {
+  const negative = cents < 0n;
+  const s = (negative ? -cents : cents).toString().padStart(3, '0');
+  return `${negative ? '-' : ''}${s.slice(0, -2)}.${s.slice(-2)}`;
+}

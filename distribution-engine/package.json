@@ -7,8 +7,11 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "coverage": "vitest run --coverage",
     "test:live": "RUN_LIVE=1 vitest run test/live-trustline.test.ts",
-    "demo": "tsx demo/compute-and-emit.ts"
+    "demo": "tsx demo/compute-and-emit.ts",
+    "import:export": "tsx tools/import-urbanflip-export.ts",
+    "replay:report": "tsx tools/replay-report.ts"
   },
   "engines": {
     "node": ">=20"
@@ -19,8 +22,12 @@
   "devDependencies": {
     "@types/node": "^26.6.5",
     "@vitest/coverage-v8": "^5.0.5",
+    "exceljs": "^4.4.0",
     "tsx": "^4.19.2",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
   }
 }

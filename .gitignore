@@ -12,3 +12,9 @@ coverage/
 
 # reference documents (not code)
 Stellar Community Fund Final Submission.pdf
+SCF45_Paquete_Evidencias_T1.docx
+
+# raw platform exports: real investor ids, never committed (only the
+# pseudonymized fixtures in distribution-engine/fixtures/real are)
+*.xlsx
+*.xls
