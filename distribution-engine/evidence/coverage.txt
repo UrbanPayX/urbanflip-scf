@@ -1,0 +1,35 @@
+# distribution-engine: npm run coverage (2026-10-28, vitest 5.0.5 + @vitest/coverage-v8; per-file 90% thresholds in vitest.config.ts)
+ Test Files  6 passed | 1 skipped (7)
+      Tests  60 passed | 2 skipped (62)
+   Start at  11:09:05
+   Duration  5.79s (import 83%, tests 12%, worker 4%, transform 1%)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   93.61 |    91.43 |   96.15 |   94.11 |                   
+ src               |       0 |        0 |       0 |       0 |                   
+  index.ts         |       0 |        0 |       0 |       0 |                   
+ src/api           |   94.62 |    86.17 |     100 |   95.06 |                   
+  server.ts        |   94.62 |    86.17 |     100 |   95.06 | 105,120-125       
+ src/compute       |     100 |     99.2 |     100 |     100 |                   
+  pro-rata.ts      |     100 |    95.23 |     100 |     100 | 143               
+  replay.ts        |     100 |      100 |     100 |     100 |                   
+  ...all-replay.ts |     100 |      100 |     100 |     100 |                   
+  waterfall.ts     |     100 |      100 |     100 |     100 |                   
+ src/emit          |   98.68 |    97.61 |     100 |     100 |                   
+  sdp-csv.ts       |     100 |      100 |     100 |     100 |                   
+  ...conversion.ts |    98.3 |    96.96 |     100 |     100 | 110               
+ src/money         |     100 |      100 |     100 |     100 |                   
+  stroops.ts       |     100 |      100 |     100 |     100 |                   
+ src/trustline     |       4 |        0 |      20 |       5 |                   
+  checker.ts       |       4 |        0 |      20 |       5 | 25-54             
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 93.61% ( 440/470 )
+Branches     : 91.43% ( 267/292 )
+Functions    : 96.15% ( 100/104 )
+Lines        : 94.11% ( 368/391 )
+================================================================================

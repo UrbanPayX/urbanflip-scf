@@ -1,0 +1,50 @@
+# gated-issuance: npm run coverage (2026-10-28, vitest 5.0.5 + @vitest/coverage-v8; per-file 90% thresholds in vitest.config.ts)
+ Test Files  15 passed | 1 skipped (16)
+      Tests  139 passed | 8 skipped (147)
+   Start at  11:08:46
+   Duration  15.74s (import 74%, tests 21%, worker 2%, transform 2%)
+
+    Isolate  16 workers spawned · ~699ms startup each (spawn + environment, per file)
+             at least ~899ms faster with isolate: false — reuses workers across files instead of one per file
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   91.32 |     82.6 |   92.72 |   93.14 |                   
+ src               |   58.33 |    10.25 |      50 |    60.6 |                   
+  config.ts        |       0 |        0 |       0 |       0 | 34-83             
+  index.ts         |   95.45 |       50 |     100 |     100 | 83-96             
+ src/audit         |   57.14 |      100 |      50 |   57.14 |                   
+  audit-log.ts     |   57.14 |      100 |      50 |   57.14 | 36-40             
+ src/gate          |     100 |      100 |     100 |     100 |                   
+  ...iance-gate.ts |     100 |      100 |     100 |     100 |                   
+  static-gate.ts   |     100 |      100 |     100 |     100 |                   
+  ...nflip-gate.ts |     100 |      100 |     100 |     100 |                   
+ src/issuance      |   94.67 |    94.62 |   95.91 |   95.79 |                   
+  asset-code.ts    |     100 |      100 |     100 |     100 |                   
+  in-flight.ts     |     100 |      100 |     100 |     100 |                   
+  ...rovisioner.ts |     100 |      100 |     100 |     100 |                   
+  money.ts         |     100 |      100 |     100 |     100 |                   
+  pending-tx.ts    |     100 |      100 |     100 |     100 |                   
+  ...settlement.ts |    79.1 |    71.87 |   81.81 |   82.14 | 33-47             
+  ...authorizer.ts |     100 |    98.86 |     100 |     100 | 327               
+ src/sep1          |    87.5 |    76.19 |     100 |   97.05 |                   
+  stellar-toml.ts  |    87.5 |    76.19 |     100 |   97.05 | 48                
+ src/stellar       |     100 |      100 |     100 |     100 |                   
+  tx-submitter.ts  |     100 |      100 |     100 |     100 |                   
+ src/store         |   90.41 |    77.39 |    92.2 |    92.8 |                   
+  ...back-store.ts |     100 |      100 |     100 |     100 |                   
+  issuer-store.ts  |   94.87 |     87.5 |    92.3 |   97.22 | 47                
+  json-file.ts     |   95.23 |     87.5 |    87.5 |   97.36 | 17                
+  secret-box.ts    |   92.59 |       80 |     100 |      96 | 40                
+  ...ment-store.ts |   91.89 |      100 |      85 |   94.11 | 61,123            
+  state-lock.ts    |   82.72 |    67.18 |    92.3 |   85.56 | ...13-214,250-251 
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 91.32% ( 684/749 )
+Branches     : 82.6% ( 361/437 )
+Functions    : 92.72% ( 153/165 )
+Lines        : 93.14% ( 625/671 )
+================================================================================

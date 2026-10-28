@@ -1,0 +1,105 @@
+# wallet-onboarding: npx vitest run --reporter=verbose (2026-10-28); live testnet suites skipped (RUN_LIVE=1)
+
+ RUN  v5.0.5 <repo>/wallet-onboarding
+
+ ✓ web/test/params.test.ts > parseFragment > reads every param from the fragment 19ms
+ ✓ web/test/params.test.ts > parseFragment > defaults network to testnet and lang to es; unknown lang falls back to es 3ms
+ ✓ web/test/params.test.ts > parseFragment > keeps a literal "+" and decodes percent-escapes in the session token 2ms
+ ✓ web/test/params.test.ts > parseFragment > lists every missing or invalid param and keeps a valid parent for reporting 3ms
+ ✓ web/test/params.test.ts > parseFragment > rejects an empty fragment 2ms
+ ✓ web/test/params.test.ts > parseFragment > rejects a session token with whitespace 3ms
+ ✓ web/test/params.test.ts > parseOrigin > accepts exact https origins and http only on localhost 3ms
+ ✓ web/test/params.test.ts > parseOrigin > rejects "*" 2ms
+ ✓ web/test/params.test.ts > parseOrigin > rejects "null" 4ms
+ ✓ web/test/params.test.ts > parseOrigin > rejects "" 2ms
+ ✓ web/test/params.test.ts > parseOrigin > rejects "https://app.urbanflip.io/" 1ms
+ ✓ web/test/params.test.ts > parseOrigin > rejects "https://app.urbanflip.io/dashboard" 1ms
+ ✓ web/test/params.test.ts > parseOrigin > rejects "https://app.urbanflip.io?x=1" 1ms
+ ✓ web/test/params.test.ts > parseOrigin > rejects "http://app.urbanflip.io" 1ms
+ ✓ web/test/params.test.ts > parseOrigin > rejects "javascript:alert(1)" 1ms
+ ✓ web/test/params.test.ts > parseOrigin > rejects "app.urbanflip.io" 1ms
+ ✓ test/wallet-directory.test.ts > JsonFileWalletDirectory > refuses to rebind an investor and fails closed on an unreadable file 81ms
+ ✓ test/wallet-directory.test.ts > JsonFileWalletDirectory lock (one process per file) > a second instance is refused while the first holds the lock, naming the holder 20ms
+ ✓ test/wallet-directory.test.ts > JsonFileWalletDirectory lock (one process per file) > a live holder in another process is refused 7ms
+ ✓ test/wallet-directory.test.ts > JsonFileWalletDirectory lock (one process per file) > a stale lock (holder killed, same host) is taken over 783ms
+ ✓ test/wallet-directory.test.ts > JsonFileWalletDirectory lock (one process per file) > a lock from another host, or an unreadable lock, is refused (liveness cannot be proven) 9ms
+ ✓ test/wallet-directory.test.ts > JsonFileWalletDirectory lock (one process per file) > the lock is released on normal exit and on process.exit() 1560ms
+ ✓ test/privy-adapter.test.ts > PrivyWalletProvider: documented request shapes > looks up by external_id, then creates a native stellar wallet with Basic auth and an idempotency key 399ms
+ ✓ test/privy-adapter.test.ts > PrivyWalletProvider: documented request shapes > signs a Stellar tx hash via raw_sign (0x-hex in, 0x-hex out) and returns a verifiable base64 signature 60ms
+ ✓ test/privy-adapter.test.ts > PrivyWalletProvider: documented request shapes > a second call is served from the directory: no Privy traffic 12ms
+ ✓ test/privy-adapter.test.ts > PrivyWalletProvider: documented request shapes > legacy solana wallets sign via rpc signMessage (base64 in/out) against the converted G-address 35ms
+ ✓ test/sponsorship-structure.test.ts > SponsorService envelope structure (CAP-33 invariants) > creates accounts with 0 XLM inside a full begin/create/end sponsorship sandwich 439ms
+ ✓ test/privy-adapter.test.ts > PrivyWalletProvider: documented request shapes > directory records written before chain types were stored are treated as solana 30ms
+ ✓ test/privy-adapter.test.ts > PrivyWalletProvider: documented request shapes > surfaces unusable payloads as errors (verification still happens downstream) 34ms
+ ✓ test/privy-adapter.test.ts > PrivyWalletProvider: documented request shapes > HTTP errors name the endpoint and status, never the app secret 6ms
+ ✓ test/privy-adapter.test.ts > PrivyWalletProvider: documented request shapes > refuses incomplete configuration 3ms
+ ✓ test/privy-adapter.test.ts > PrivyWalletProvider: one wallet per investor > survives a restart: the JSON file directory returns the same wallet, no second create 84ms
+ ✓ test/pipeline.test.ts > InvestorTxPipeline > submits every investor transaction as a fee-bump paid by the channel account 457ms
+ ✓ test/privy-adapter.test.ts > PrivyWalletProvider: one wallet per investor > a lost directory is recovered from Privy by external_id: same wallet, no create 26ms
+ ✓ test/privy-adapter.test.ts > PrivyWalletProvider: one wallet per investor > concurrent first calls for one investor create exactly one wallet 7ms
+ ✓ test/privy-adapter.test.ts > PrivyWalletProvider: one wallet per investor > binds before returning: a failed write is an error, and the retry recovers the same wallet 15ms
+ ✓ test/privy-adapter.test.ts > PrivyWalletProvider: one wallet per investor > lost create response: the retry finds the wallet Privy did create 10ms
+ ✓ test/privy-adapter.test.ts > PrivyWalletProvider: one wallet per investor > lost create response without external_id: the same idempotency key makes Privy replay, not repeat 12ms
+ ✓ test/privy-adapter.test.ts > PrivyWalletProvider: one wallet per investor > after Privy answers with an error (cached under the key) the next attempt uses a fresh key 9ms
+ ✓ test/privy-adapter.test.ts > PrivyWalletProvider: one wallet per investor > a create refused because the external_id exists binds the existing wallet 10ms
+ ✓ test/privy-adapter.test.ts > PrivyWalletProvider: one wallet per investor > never binds a wallet whose external_id does not match, even if the server ignores the filter 11ms
+ ✓ test/pipeline.test.ts > InvestorTxPipeline > absorbs duplicate submissions under the same idempotency key 106ms
+ ✓ test/sponsorship-structure.test.ts > SponsorService envelope structure (CAP-33 invariants) > opens trustlines with the changeTrust sourced from the investor 164ms
+ ✓ test/privy-adapter.test.ts > PrivyWalletProvider: optional linking and ownership > links the Privy user as the wallet entity (attribution only, not owner) 30ms
+ ✓ test/privy-adapter.test.ts > PrivyWalletProvider: optional linking and ownership > owned wallets: owner_id on create, P-256 authorization signature on every signing request 60ms
+ ✓ test/privy-adapter.test.ts > PrivyWalletProvider: optional linking and ownership > custom or disabled idempotency keys and external ids 23ms
+ ✓ test/privy-adapter.test.ts > defaultExternalId / canonicalJson > readable for safe ids, hashed otherwise, always a valid external_id, never colliding 7ms
+ ✓ test/privy-adapter.test.ts > defaultExternalId / canonicalJson > canonicalJson sorts keys recursively and drops undefined 1ms
+ ✓ test/privy-adapter.test.ts > toStellarAddress (Solana base58 -> Stellar G-address, same Ed25519 key) > converts known Solana addresses and passes G-addresses through 4ms
+ ✓ test/privy-adapter.test.ts > toStellarAddress (Solana base58 -> Stellar G-address, same Ed25519 key) > rejects anything that is not a 32-byte key 2ms
+ ✓ test/onboarding-rerun.test.ts > SponsorService re-runs (chain state checked before every step) > skips account creation when the account already exists (second deal, restart) 449ms
+ ✓ test/pipeline.test.ts > InvestorTxPipeline > verifies the wallet signature BEFORE submitting; bad signature means no submission 64ms
+ ✓ test/pipeline.test.ts > InvestorTxPipeline > retries exactly once on timeout-classified failures, under the same key 108ms
+ ✓ test/onboarding-rerun.test.ts > SponsorService re-runs (chain state checked before every step) > reports zeroXlm from the chain for an account that was funded elsewhere 21ms
+ ✓ test/onboarding-rerun.test.ts > SponsorService re-runs (chain state checked before every step) > skips a trustline that already exists for the exact asset (code AND issuer) 178ms
+ ✓ test/pipeline.test.ts > InvestorTxPipeline > records terminal failures without retrying 62ms
+ ✓ test/pipeline.test.ts > InvestorTxPipeline retries (definitive vs unknown outcomes) > rebuilds after a definitive rejection instead of replaying the cached failure 96ms
+ ✓ test/pipeline.test.ts > InvestorTxPipeline retries (definitive vs unknown outcomes) > records the hash BEFORE submitting, so a crash mid-submit is settled by hash 45ms
+ ✓ test/onboarding-rerun.test.ts > SponsorService re-runs (chain state checked before every step) > opens a second trustline for the same code from a different issuer 160ms
+ ✓ test/pipeline.test.ts > InvestorTxPipeline retries (definitive vs unknown outcomes) > settles an unknown outcome by hash: applied means success, nothing re-signed or resubmitted 57ms
+ ↓ test/live-testnet-sponsorship.test.ts > D2 sponsored onboarding on testnet (live) > creates 20+ sponsored accounts (acceptance criterion)
+ ↓ test/live-testnet-sponsorship.test.ts > D2 sponsored onboarding on testnet (live) > every investor holds exactly 0 XLM with an open sponsored trustline
+ ↓ test/live-testnet-sponsorship.test.ts > D2 sponsored onboarding on testnet (live) > leaves all transactions verifiable on-chain
+ ↓ test/live-testnet-sponsorship.test.ts > D2 sponsored onboarding on testnet (live) > re-runs onboarding after a restart without submitting anything
+ ↓ test/live-testnet-sponsorship.test.ts > D2 sponsored onboarding on testnet (live) > opens the same code from a second issuer as a distinct sponsored trustline
+ ✓ test/pipeline.test.ts > InvestorTxPipeline retries (definitive vs unknown outcomes) > unknown and not on the ledger: retry later until maxTime + 30s, then rebuild 109ms
+ ✓ test/pipeline.test.ts > InvestorTxPipeline retries (definitive vs unknown outcomes) > unknown but failed on-chain: rebuilds right away 71ms
+ ✓ test/onboarding-rerun.test.ts > SponsorService re-runs (chain state checked before every step) > timeout after apply: the retry finds the account on-chain and submits nothing new 86ms
+ ✓ test/onboarding-rerun.test.ts > SponsorService re-runs (chain state checked before every step) > a definitively rejected step is rebuilt on the next call 148ms
+ ✓ test/pipeline.test.ts > InvestorTxPipeline retries (definitive vs unknown outcomes) > a rejected resubmission after a lost response stays unknown (the first copy may have applied) 43ms
+ ✓ test/pipeline.test.ts > InvestorTxPipeline retries (definitive vs unknown outcomes) > concurrent calls under one key share a single submission 38ms
+ ✓ test/pipeline.test.ts > InvestorTxPipeline retries (definitive vs unknown outcomes) > refuses transactions without a bounded timeout (an unknown outcome could never settle) 9ms
+ ✓ test/pipeline.test.ts > InvestorTxPipeline retries (definitive vs unknown outcomes) > requires a LedgerReader (explicit, or a submitter that implements one) 4ms
+ ✓ test/pipeline.test.ts > DevKeyWalletProvider (wallet port liveness) > produces signatures that verify against the wallet address 15ms
+ ✓ test/pipeline.test.ts > DevKeyWalletProvider (wallet port liveness) > regenerates the same wallet for the same investor 2ms
+ ✓ web/test/widget.test.ts > Wallets Kit widget > happy path: connect, prove ownership, sign and submit the trustline, report ready 730ms
+ ✓ web/test/widget.test.ts > Wallets Kit widget > already-open trustline: reports ready without a second signature (lang=en) 146ms
+ ✓ web/test/widget.test.ts > Wallets Kit widget > closing the kit modal reports cancelled; retrying then succeeds 205ms
+ ✓ web/test/widget.test.ts > Wallets Kit widget > rejecting the signature in the wallet reports cancelled and sends nothing to verify 139ms
+ ✓ web/test/widget.test.ts > Wallets Kit widget > treats xBull web-wallet rejection ("Request rejected from the wallet") as cancelled 85ms
+ ✓ web/test/widget.test.ts > Wallets Kit widget > restarts from the challenge once when the server reports it expired 243ms
+ ✓ web/test/widget.test.ts > Wallets Kit widget > fetches a new challenge without prompting the wallet when it expired before signing 184ms
+ ✓ web/test/widget.test.ts > Wallets Kit widget > gives up after a second expiry and reports an error 189ms
+ ✓ web/test/widget.test.ts > Wallets Kit widget > shows a backend error, reports it, and a retry resumes at the trustline step 251ms
+ ✓ web/test/widget.test.ts > Wallets Kit widget > a 401 tells the investor to reload (expired session) 78ms
+ ✓ web/test/widget.test.ts > Wallets Kit widget > a non-JSON error body still yields a readable error 78ms
+ ✓ web/test/widget.test.ts > Wallets Kit widget > a wallet on the wrong network is stopped before any API call 75ms
+ ✓ web/test/widget.test.ts > Wallets Kit widget > wallets that cannot report their network (Albedo, xBull, LOBSTR) proceed 130ms
+ ✓ web/test/widget.test.ts > Wallets Kit widget > a verify rejection adds the network hint 127ms
+ ✓ web/test/widget.test.ts > Wallets Kit widget > refuses a signature made with a different account 130ms
+ ✓ web/test/widget.test.ts > Wallets Kit widget > refuses a challenge for a different network than the widget was opened for 79ms
+ ✓ web/test/widget.test.ts > Wallets Kit widget > ignores clicks while a step is running 77ms
+ ✓ web/test/widget.test.ts > Wallets Kit widget > fragment validation > missing params: visible error, no API or kit calls, error posted to a valid parent 20ms
+ ✓ web/test/widget.test.ts > Wallets Kit widget > fragment validation > without a valid parent nothing is posted at all 61ms
+ ✓ web/test/widget.test.ts > Wallets Kit widget > fragment validation > rejects an unknown network 20ms
+
+ Test Files  7 passed | 1 skipped (8)
+      Tests  90 passed | 5 skipped (95)
+   Start at  11:09:13
+   Duration  9.36s (import 56%, tests 27%, environment 15%, transform 1%, worker 1%)
+

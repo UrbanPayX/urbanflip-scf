@@ -1,0 +1,41 @@
+# SCF #45 Tranche 1: every offline suite on each push (live testnet suites are
+# opt-in with RUN_LIVE=1 and run by hand). The coverage gates fail the build
+# below 90%: D1 authorization path (gated-issuance), D3 computation logic
+# (distribution-engine).
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # investor-rails imports distribution-engine/src, so the engine installs first.
+      - name: distribution-engine (D3)
+        working-directory: distribution-engine
+        run: npm ci && npx tsc --noEmit && npm run coverage
+      - name: gated-issuance (D1)
+        working-directory: gated-issuance
+        run: npm ci && npx tsc --noEmit && npm run coverage
+      - name: wallet-onboarding (D2)
+        working-directory: wallet-onboarding
+        run: npm ci && npx tsc --noEmit && npm test
+      - name: investor-rails
+        working-directory: investor-rails
+        run: npm ci && npx tsc --noEmit && npm test
+
+  rust:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: urbanflip-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --locked
