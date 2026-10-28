@@ -1,5 +1,5 @@
 import * as SDK from '@stellar/stellar-sdk';
-import { toFailure, TransactionOutcomeUnknownError, type SubmitFailure } from '../stellar/tx-submitter';
+import { toFailure, TransactionOutcomeUnknownError, txHashHex, type SubmitFailure } from '../stellar/tx-submitter';
 import type { TransactionSubmitter } from '../stellar/tx-submitter';
 
 /**
@@ -41,7 +41,8 @@ export async function establishTrustline(
 
 export interface PaymentAttempt {
   ok: boolean;
-  hash?: string;
+  /** Set for a rejected payment too: a tx that fails at apply time is still recorded on the ledger. */
+  hash: string;
   failure?: SubmitFailure;
 }
 
@@ -73,6 +74,6 @@ export async function attemptPayment(
       const e = err as { message?: string };
       console.error('[attemptPayment] rejected without result codes:', e?.message ?? err);
     }
-    return { ok: false, failure };
+    return { ok: false, hash: failure.hash ?? txHashHex(tx), failure };
   }
 }

@@ -35,6 +35,15 @@ describe.skipIf(!LIVE)('D1 lifecycle on testnet (live)', () => {
     // D1 acceptance criterion 2, left half
     expect(report.preAuthPayment.rejected).toBe(true);
     expect(report.preAuthPayment.codes).toContain('op_not_authorized');
+    // recorded on the ledger as a failed tx: a hash a reviewer can open
+    expect(report.preAuthPayment.recordedAsFailed).toBe(true);
+    expect(report.preAuthPayment.hash).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it('sets home_domain on the issuer and lists the asset in the stellar.toml', () => {
+    expect(report.homeDomainOnChain).toBe('urbanflip.io');
+    expect(report.toml).toContain(`issuer = "${report.asset.issuer}"`);
+    expect(report.toml).toContain('NETWORK_PASSPHRASE = "Test SDF Network ; September 2015"');
   });
 
   it('authorizes the KYC-approved wallet, which then receives the asset', () => {
@@ -49,6 +58,7 @@ describe.skipIf(!LIVE)('D1 lifecycle on testnet (live)', () => {
   it('freeze blocks further payments at protocol level', () => {
     expect(report.postFreezePayment.rejected).toBe(true);
     expect(report.postFreezePayment.codes).toContain('op_not_authorized');
+    expect(report.postFreezePayment.recordedAsFailed).toBe(true);
   });
 
   it('leaves a complete audit trail in causal order', () => {

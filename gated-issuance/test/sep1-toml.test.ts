@@ -37,6 +37,20 @@ describe('SEP-1 stellar.toml', () => {
     expect(parsed.CURRENCIES![1]!.issuer).toBe('A'.repeat(56));
   });
 
+  it('declares the network when given, as SEP-1 requires for testnet accounts', () => {
+    const toml = generateStellarToml({
+      networkPassphrase: 'Test SDF Network ; September 2015',
+      documentation: { orgName: 'Urbanflip', orgUrl: 'https://urbanflip.io' },
+      currencies: [{ code: 'UF42', issuer: G }],
+    });
+    const parsed = parse(toml) as { NETWORK_PASSPHRASE: string; CURRENCIES: unknown[] };
+    expect(parsed.NETWORK_PASSPHRASE).toBe('Test SDF Network ; September 2015');
+    expect(parsed.CURRENCIES).toHaveLength(1);
+    expect(generateStellarToml({ documentation: { orgName: 'U', orgUrl: 'https://u' }, currencies: [] })).not.toContain(
+      'NETWORK_PASSPHRASE',
+    );
+  });
+
   it('escapes TOML-significant characters in strings', () => {
     const toml = generateStellarToml({
       documentation: { orgName: 'Urbanflip "co-invest" SL', orgUrl: 'https://urbanflip.io' },

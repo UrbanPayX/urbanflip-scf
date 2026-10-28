@@ -15,19 +15,31 @@ export interface LifecycleReport {
   funderAddress: string;
   provisioningTxHash: string;
   issuerFlagsOnChain: { authRequired: boolean; authRevocable: boolean; authClawbackEnabled: boolean };
+  /** home_domain as Horizon reports it on the issuer account (SEP-1 verification starts here). */
+  homeDomainOnChain: string;
   tomlPath: string;
+  toml: string;
   investorAddress: string;
   trustlineTxHash: string;
   /** Payment attempted BEFORE gate approval — must be rejected with op_not_authorized. */
-  preAuthPayment: { rejected: boolean; codes?: string[] };
+  preAuthPayment: RejectedPayment;
   authorizationTxHash: string;
   postAuthPaymentHash: string;
   clawbackTxHash: string;
   investorBalanceAfterClawback: string;
   freezeTxHash: string;
   /** Payment attempted AFTER freeze — must be rejected again. */
-  postFreezePayment: { rejected: boolean; codes?: string[] };
+  postFreezePayment: RejectedPayment;
   audit: AuditEvent[];
+}
+
+/** A payment the protocol refused, and how Horizon recorded it. */
+export interface RejectedPayment {
+  rejected: boolean;
+  codes?: string[];
+  hash: string;
+  /** Horizon has the tx on the ledger with successful: false (fee charged, nothing moved). */
+  recordedAsFailed: boolean;
 }
 
 export interface LifecycleOptions {
@@ -84,6 +96,7 @@ export async function runGatedLifecycle(opts: LifecycleOptions): Promise<Lifecyc
 
   // 4. SEP-1 stellar.toml with this asset.
   const toml = generateStellarToml({
+    networkPassphrase: opts.networkPassphrase,
     documentation: { orgName: 'Urbanflip', orgUrl: `https://${opts.homeDomain}` },
     currencies: [
       {
@@ -196,18 +209,31 @@ export async function runGatedLifecycle(opts: LifecycleOptions): Promise<Lifecyc
       authRevocable: flags.auth_revocable,
       authClawbackEnabled: flags.auth_clawback_enabled,
     },
+    homeDomainOnChain: String((issuerAccount as unknown as { home_domain?: string }).home_domain ?? ''),
     tomlPath,
+    toml,
     investorAddress: investor.keypair.publicKey(),
     trustlineTxHash,
-    preAuthPayment: { rejected: true, codes: preCodes },
+    preAuthPayment: await rejectedPayment(opts.horizonUrl, preAuthPayment.hash, preCodes),
     authorizationTxHash: authorization.txHash,
     postAuthPaymentHash: postAuth.hash!,
     clawbackTxHash: clawback.txHash,
     investorBalanceAfterClawback: balanceAfterClawback,
     freezeTxHash: freeze.txHash,
-    postFreezePayment: { rejected: true, codes: postCodes },
+    postFreezePayment: await rejectedPayment(opts.horizonUrl, postFreezePayment.hash, postCodes),
     audit: audit.events,
   };
+}
+
+/** Looks the refused payment up on Horizon: evidence a reviewer can open on stellar.expert. */
+async function rejectedPayment(horizonUrl: string, hash: string, codes: string[]): Promise<RejectedPayment> {
+  try {
+    const record = await new SDK.Horizon.Server(horizonUrl).transactions().transaction(hash).call();
+    return { rejected: true, codes, hash, recordedAsFailed: record.successful === false };
+  } catch {
+    // Refused before reaching the ledger: the result codes are the only record.
+    return { rejected: true, codes, hash, recordedAsFailed: false };
+  }
 }
 
 async function assetBalanceOf(horizonUrl: string, address: string, asset: SDK.Asset): Promise<string> {
