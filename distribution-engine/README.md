@@ -102,7 +102,7 @@ withholding, net) of every settlement: **1,043 amounts, 0 differences**
   and enter as adjustments with their reason; 1 position has no payout record
   and is declared as such. A test proves the adjustments explain their own
   positions and nothing else, and a one-cent change anywhere is detected.
-- **What was reconstructed, pending Urbanflip's confirmation:** the export has
+- **What was reconstructed, confirmed by Urbanflip on 2026-11-01:** the export has
   no deal-level pools and no investor terms. Each pool is the cent amount that
   reproduces every row (exact interval intersection; for Orense 9 and General
   Perón 26 it is the only one, and a pool one cent off fails the test). Terms

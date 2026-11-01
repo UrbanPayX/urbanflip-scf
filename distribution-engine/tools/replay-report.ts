@@ -148,7 +148,7 @@ function main(): void {
   }
   md.push(
     '',
-    'Pending confirmation by Urbanflip: the deal-level pools (not in the export; each is the cent amount that reproduces every row), the investor terms (read off the payouts within closed sets), the Orense 9 month formula, and the three exceptions above.',
+    'Confirmed by Urbanflip on 2026-11-01: the deal-level pools (not in the export; each is the cent amount that reproduces every row), the investor terms (read off the payouts within closed sets), the Orense 9 month formula, and the three exceptions above.',
     '',
   );
 
