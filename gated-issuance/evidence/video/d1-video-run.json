@@ -1,0 +1,112 @@
+{
+  "criterion": "SCF D1.2 recorded demo: non-KYC wallet rejected at protocol level (op_not_authorized); KYC-approved wallet authorized and receiving. The same run also exercises D1.4 (clawback, freeze).",
+  "note": "Run recorded for gated-issuance/evidence/video/d1-lifecycle-demo.mp4. Produced by runGatedLifecycle (gated-issuance/src/testkit/lifecycle.ts) with the parameters of demo/live-lifecycle.ts; the recorder held the clawback until the authorized investor account had been shown.",
+  "network": "testnet",
+  "generatedAt": "2026-11-01T23:12:35.947Z",
+  "asset": "UF0042-GC2PPZTFSVK2JYPYBCO74LJKCZ6CJYZJNVEVVBDNMUNBMJHL3DE7AGVP",
+  "assetPage": "https://stellar.expert/explorer/testnet/asset/UF0042-GC2PPZTFSVK2JYPYBCO74LJKCZ6CJYZJNVEVVBDNMUNBMJHL3DE7AGVP",
+  "issuer": "https://stellar.expert/explorer/testnet/account/GC2PPZTFSVK2JYPYBCO74LJKCZ6CJYZJNVEVVBDNMUNBMJHL3DE7AGVP",
+  "issuerFlags": {
+    "authRequired": true,
+    "authRevocable": true,
+    "authClawbackEnabled": true
+  },
+  "homeDomain": "urbanflip.io",
+  "issuerProvisioningTx": "https://stellar.expert/explorer/testnet/tx/ad25740bec93c2f4f0eabcabca5afb1d80af8fbdc4acd48917cde9fc2765b70a",
+  "investor": "https://stellar.expert/explorer/testnet/account/GBN4JWAIIB5AVKDX7T3X2GIANBHOESPYHROZ5W37U5TGOQGHQDQY5V34",
+  "trustlineTx": "https://stellar.expert/explorer/testnet/tx/bc9aca7519644eff78f5d39fedfa2b9661a6cf7bd7b5e9ce372b4028615a6e31",
+  "rejectedBeforeAuthorization": {
+    "tx": "https://stellar.expert/explorer/testnet/tx/4db8e8d89f8e1131f5f8c11af765e15ae3b65e88e7d11ab185ffd39170e540f5",
+    "resultCodes": [
+      "op_not_authorized"
+    ],
+    "recordedAsFailed": true
+  },
+  "gateDecision": {
+    "kind": "GATE_DECISION",
+    "ts": "2026-11-01T23:10:40.386Z",
+    "dealId": "UF-0042",
+    "investor": {
+      "investorId": "inv-001",
+      "stellarAddress": "GBN4JWAIIB5AVKDX7T3X2GIANBHOESPYHROZ5W37U5TGOQGHQDQY5V34"
+    },
+    "decision": {
+      "status": "approved",
+      "provider": "static-allowlist",
+      "evidenceId": "static:inv-001:UF-0042",
+      "evaluatedAt": "2026-11-01T23:10:40.386Z"
+    }
+  },
+  "authorizationTx": "https://stellar.expert/explorer/testnet/tx/49af3691d6265ee58a7f4af791fbf3af753f588b44d47d7372a862a3f05528ec",
+  "paymentReceivedTx": "https://stellar.expert/explorer/testnet/tx/54e99099bd729d7c6bbf32c989f3a76d94bf3b21745d2e2d7bb0b613eb085a51",
+  "clawbackTx": "https://stellar.expert/explorer/testnet/tx/6047974a10fe040edbd522c98260e23c11243dd9f78b2ea199055168a929ddb7",
+  "investorBalanceAfterClawback": "5.0000000",
+  "freezeTx": "https://stellar.expert/explorer/testnet/tx/33fff12a4d1a5c5050818cd950fc48b699149b7a2f30819a986847c046402389",
+  "rejectedAfterFreeze": {
+    "tx": "https://stellar.expert/explorer/testnet/tx/935ab2d8be15c194e3b153f70a024ed8f003ab52a88c15e8f851d0bf6ec9fdd2",
+    "resultCodes": [
+      "op_not_authorized"
+    ],
+    "recordedAsFailed": true
+  },
+  "auditTrail": [
+    {
+      "kind": "ISSUER_PROVISIONED",
+      "ts": "2026-11-01T23:10:25.551Z",
+      "dealId": "UF-0042",
+      "assetCode": "UF0042",
+      "issuer": "GC2PPZTFSVK2JYPYBCO74LJKCZ6CJYZJNVEVVBDNMUNBMJHL3DE7AGVP",
+      "txHash": "ad25740bec93c2f4f0eabcabca5afb1d80af8fbdc4acd48917cde9fc2765b70a"
+    },
+    {
+      "kind": "GATE_DECISION",
+      "ts": "2026-11-01T23:10:40.386Z",
+      "dealId": "UF-0042",
+      "investor": {
+        "investorId": "inv-001",
+        "stellarAddress": "GBN4JWAIIB5AVKDX7T3X2GIANBHOESPYHROZ5W37U5TGOQGHQDQY5V34"
+      },
+      "decision": {
+        "status": "approved",
+        "provider": "static-allowlist",
+        "evidenceId": "static:inv-001:UF-0042",
+        "evaluatedAt": "2026-11-01T23:10:40.386Z"
+      }
+    },
+    {
+      "kind": "TRUSTLINE_AUTHORIZED",
+      "ts": "2026-11-01T23:10:45.515Z",
+      "deal": {
+        "dealId": "UF-0042",
+        "displayName": "Urbanflip Deal #42 (SCF D1 demo)"
+      },
+      "investor": {
+        "investorId": "inv-001",
+        "stellarAddress": "GBN4JWAIIB5AVKDX7T3X2GIANBHOESPYHROZ5W37U5TGOQGHQDQY5V34"
+      },
+      "decision": {
+        "status": "approved",
+        "provider": "static-allowlist",
+        "evidenceId": "static:inv-001:UF-0042",
+        "evaluatedAt": "2026-11-01T23:10:40.386Z"
+      },
+      "txHash": "49af3691d6265ee58a7f4af791fbf3af753f588b44d47d7372a862a3f05528ec"
+    },
+    {
+      "kind": "CLAWBACK",
+      "ts": "2026-11-01T23:12:25.441Z",
+      "dealId": "UF-0042",
+      "stellarAddress": "GBN4JWAIIB5AVKDX7T3X2GIANBHOESPYHROZ5W37U5TGOQGHQDQY5V34",
+      "amount": "5.0000000",
+      "txHash": "6047974a10fe040edbd522c98260e23c11243dd9f78b2ea199055168a929ddb7",
+      "clawbackId": "offboard-inv-001-UF-0042"
+    },
+    {
+      "kind": "TRUSTLINE_FROZEN",
+      "ts": "2026-11-01T23:12:30.436Z",
+      "dealId": "UF-0042",
+      "stellarAddress": "GBN4JWAIIB5AVKDX7T3X2GIANBHOESPYHROZ5W37U5TGOQGHQDQY5V34",
+      "txHash": "33fff12a4d1a5c5050818cd950fc48b699149b7a2f30819a986847c046402389"
+    }
+  ]
+}
