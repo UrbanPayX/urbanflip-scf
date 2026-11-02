@@ -30,7 +30,7 @@ async function main(): Promise<void> {
 
   // A fresh investor per run: Privy external_ids are write-once per app.
   const runId = Date.now().toString(36);
-  const investorId = `inv-demo-${runId}`;
+  const investorId = `demo-${runId}`;
   const email = process.env.DEMO_EMAIL ?? `demo+${runId}@example.com`;
   const server = new SDK.Horizon.Server('https://horizon-testnet.stellar.org');
   const xlmHeld = async (address: string): Promise<string> => {

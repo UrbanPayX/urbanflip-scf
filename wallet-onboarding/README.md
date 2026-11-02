@@ -183,19 +183,22 @@ investor is offline, so that option is deliberately not offered. Use
 | `entity` (user or organization) records who the wallet is for. It grants no control and is immutable. A user-owned wallet needs the user's JWT to sign | [Wallet entities](https://docs.privy.io/kyc-kyb/entities), [Server-side user wallets](https://docs.privy.io/recipes/wallets/server-side-user-wallets) |
 | A wallet can also be looked up by id with `GET /v1/wallets/{id}` | [Get wallet](https://docs.privy.io/api-reference/wallets/get) |
 
-### Not yet verified (needs a sandbox run with real credentials)
+### Verified against Privy (2026-11-02, live API + Stellar testnet)
 
-- **Stellar address format.** The docs never show a sample `address` for a
-  `stellar` wallet. The Stellar example passes it to `Keypair.fromPublicKey`,
-  which implies a G-address. If Privy returns anything else, the adapter
-  refuses the wallet.
-- **`raw_sign` signature format.** The docs' sample signature is a
-  placeholder. The adapter accepts 128 hex characters with or without `0x`.
+`npm run demo` with `PRIVY_APP_ID`/`PRIVY_APP_SECRET` set:
+
+- **Stellar address format.** Privy returns a plain G-address for a
+  `stellar` wallet (`chain_type: "stellar"`, `owner_id: null`).
+- **`raw_sign` signature format.** The returned signature is accepted by
+  Stellar: the investor's sponsored-trustline transaction, signed through
+  `raw_sign`, succeeded on testnet.
+- **Ownerless wallets.** `raw_sign` on an ownerless wallet needs only Basic
+  auth plus `privy-app-id`.
+
+### Not yet verified
+
 - **Duplicate `external_id`.** The docs do not give the HTTP status for this
   error. The adapter re-checks by `external_id` after any error response.
-- **Ownerless wallets.** No page says outright that `raw_sign` or `rpc` on an
-  ownerless wallet needs only Basic auth. The automations page and the
-  security checklist imply it.
 - **`privyAuthorizationSigner`.** It is built from the docs (DER signature,
   base64) but has never been run against Privy.
 
