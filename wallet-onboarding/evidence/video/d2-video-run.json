@@ -1,17 +1,17 @@
 {
   "criterion": "SCF D2.1: Recorded flow: email signup to embedded wallet to sponsored trustline, with the investor holding zero XLM at every step.",
-  "note": "Run recorded for wallet-onboarding/evidence/video/d2-onboarding-demo.mp4: wallet-onboarding library (createOnboarding + PrivyWalletProvider) against the live Privy API and Stellar testnet. The demo sign-up page stands in for the Urbanflip app sign-up, which calls the same onboarding service.",
+  "note": "Run recorded for wallet-onboarding/evidence/video/d2-onboarding-demo.mp4 (v2): wallet-onboarding library (createOnboarding + PrivyWalletProvider) against the live Privy API and Stellar testnet. The sign-up screen is a testnet demo screen in Urbanflip's visual identity, served locally by the recording harness and connected to this onboarding service; it is not the production urbanflip.io sign-up.",
   "network": "testnet",
-  "investorId": "demo-mvz2onv2",
+  "investorId": "demo-mw187ufv",
   "channel": {
-    "account": "GBRHSTGLORDDZJTCMCQ7OGSOP3K2PPNNND73IT2HJRMMUZGH42FCK7JJ",
-    "link": "https://stellar.expert/explorer/testnet/account/GBRHSTGLORDDZJTCMCQ7OGSOP3K2PPNNND73IT2HJRMMUZGH42FCK7JJ",
+    "account": "GCNSHALQXPYUSUQPEZYWVOYAHH2KKKDWGDLJ42GR6UJVKDRFKOFJEEMR",
+    "link": "https://stellar.expert/explorer/testnet/account/GCNSHALQXPYUSUQPEZYWVOYAHH2KKKDWGDLJ42GR6UJVKDRFKOFJEEMR",
     "role": "sponsors reserves (CAP-33) and pays fees (fee-bump)"
   },
   "dealAsset": {
     "code": "UFDEMO",
-    "issuer": "GAUDJIIHFJM2KJAE67PHVNKMW7VJH2X3ZO5E7YKUYQI5LC5SVK5TDBIM",
-    "issuerCreatedTx": "https://stellar.expert/explorer/testnet/tx/107b4a66d99d32047099b359cab4995b08a340cdda90c6cfc0448944f927f4a5",
+    "issuer": "GB4P4N3IPERULMZGJPRFNR33ZQMX6PIHHS6YYU6GKQR7IQG7ETGC26KT",
+    "issuerCreatedTx": "https://stellar.expert/explorer/testnet/tx/adbaf9d49b4db9178329a837ed77cd25f30b5ad63b004df631b5b1ed90001408",
     "note": "demo deal issuer for this run"
   },
   "xlmHeldByInvestor": [
@@ -25,7 +25,7 @@
       "after": "sponsored account created",
       "onLedger": true,
       "xlm": "0.0000000",
-      "accountSponsor": "GBRHSTGLORDDZJTCMCQ7OGSOP3K2PPNNND73IT2HJRMMUZGH42FCK7JJ",
+      "accountSponsor": "GCNSHALQXPYUSUQPEZYWVOYAHH2KKKDWGDLJ42GR6UJVKDRFKOFJEEMR",
       "numSponsored": 2,
       "trustlines": []
     },
@@ -33,60 +33,61 @@
       "after": "sponsored trustline opened",
       "onLedger": true,
       "xlm": "0.0000000",
-      "accountSponsor": "GBRHSTGLORDDZJTCMCQ7OGSOP3K2PPNNND73IT2HJRMMUZGH42FCK7JJ",
+      "accountSponsor": "GCNSHALQXPYUSUQPEZYWVOYAHH2KKKDWGDLJ42GR6UJVKDRFKOFJEEMR",
       "numSponsored": 3,
       "trustlines": [
         {
-          "asset": "UFDEMO-GAUDJIIHFJM2KJAE67PHVNKMW7VJH2X3ZO5E7YKUYQI5LC5SVK5TDBIM",
+          "asset": "UFDEMO-GB4P4N3IPERULMZGJPRFNR33ZQMX6PIHHS6YYU6GKQR7IQG7ETGC26KT",
           "balance": "0.0000000",
-          "sponsor": "GBRHSTGLORDDZJTCMCQ7OGSOP3K2PPNNND73IT2HJRMMUZGH42FCK7JJ"
+          "sponsor": "GCNSHALQXPYUSUQPEZYWVOYAHH2KKKDWGDLJ42GR6UJVKDRFKOFJEEMR"
         }
       ]
     }
   ],
-  "email": "lucia.martin+2ojfe@example.com",
-  "startedAt": "2026-11-02T09:45:03.415Z",
+  "privyRequestTimeoutMs": 25000,
+  "email": "lucia.martin+87ojy@example.com",
+  "startedAt": "2026-11-03T21:56:01.044Z",
   "privyUser": {
-    "id": "did:privy:cmvz2p14o032z0gkzyt297ht2",
-    "linkedEmail": "lucia.martin+2ojfe@example.com"
+    "id": "did:privy:cmw188wcn00hb0gl3es9psyf2",
+    "linkedEmail": "lucia.martin+87ojy@example.com"
   },
   "privyWallet": {
-    "id": "xpo4w896w7m3idxricbj3pzu",
+    "id": "w8vh3nw0zicsfk0dys359z1h",
     "chain_type": "stellar",
-    "address": "GCQLANS6NVHWF5YT3NOZ5EPFS2MUYCCUQYEOEV7ZXZX3TMFKOB23WGBM",
+    "address": "GA6YK5TNQFHLA7Z7XW6O3A3XGV73IOCRDG65UX74WPNOAHSCREOCDPIA",
     "owner_id": null,
-    "external_id": "inv-demo-mvz2onv2",
+    "external_id": "inv-demo-mw187ufv",
     "entity": {
       "type": "user",
-      "id": "cmvz2p14o032z0gkzyt297ht2"
+      "id": "cmw188wcn00hb0gl3es9psyf2"
     },
     "connector_type": "embedded",
     "wallet_client": "privy",
     "user_can_sign": false
   },
-  "investorAccount": "https://stellar.expert/explorer/testnet/account/GCQLANS6NVHWF5YT3NOZ5EPFS2MUYCCUQYEOEV7ZXZX3TMFKOB23WGBM",
+  "investorAccount": "https://stellar.expert/explorer/testnet/account/GA6YK5TNQFHLA7Z7XW6O3A3XGV73IOCRDG65UX74WPNOAHSCREOCDPIA",
   "accountCreation": {
-    "hash": "73a1b36469e2a99dee3af5844e21cd210509075a2b02593de8e7b528501aee06",
+    "hash": "2265da2d51e4ca7227f1ad65d0ef16cb0784c3964d29c5f44d9dbc83b0c5f7a8",
     "successful": true,
-    "feeAccount": "GBRHSTGLORDDZJTCMCQ7OGSOP3K2PPNNND73IT2HJRMMUZGH42FCK7JJ",
+    "feeAccount": "GCNSHALQXPYUSUQPEZYWVOYAHH2KKKDWGDLJ42GR6UJVKDRFKOFJEEMR",
     "feeCharged": "400",
-    "innerHash": "ea64176296e061099db6985ea6ea38be4c69560e634aa4f7f33b39aa0f36ad82",
+    "innerHash": "585d83c06912c9cfeb55e54c5ef20cd7e8b723cfe33444df800342a654cd60d9",
     "signatures": 2,
-    "ledger": 5517816,
-    "createdAt": "2026-11-02T09:45:20Z",
-    "link": "https://stellar.expert/explorer/testnet/tx/73a1b36469e2a99dee3af5844e21cd210509075a2b02593de8e7b528501aee06"
+    "ledger": 5543868,
+    "createdAt": "2026-11-03T21:56:20Z",
+    "link": "https://stellar.expert/explorer/testnet/tx/2265da2d51e4ca7227f1ad65d0ef16cb0784c3964d29c5f44d9dbc83b0c5f7a8"
   },
   "trustline": {
-    "asset": "UFDEMO-GAUDJIIHFJM2KJAE67PHVNKMW7VJH2X3ZO5E7YKUYQI5LC5SVK5TDBIM",
-    "hash": "b290c110117beea448ac9ff014ed25a75b686522f62d22d53ee67d88aecdd305",
+    "asset": "UFDEMO-GB4P4N3IPERULMZGJPRFNR33ZQMX6PIHHS6YYU6GKQR7IQG7ETGC26KT",
+    "hash": "16998162c37de6edc16865613cadfcf8245c2a6fdb8a91d825c50a9f60fcd913",
     "successful": true,
-    "feeAccount": "GBRHSTGLORDDZJTCMCQ7OGSOP3K2PPNNND73IT2HJRMMUZGH42FCK7JJ",
+    "feeAccount": "GCNSHALQXPYUSUQPEZYWVOYAHH2KKKDWGDLJ42GR6UJVKDRFKOFJEEMR",
     "feeCharged": "400",
-    "innerHash": "aa87e71490306e00de811b21ad6204da5724321a0d6d8794eb1bcae469a07c59",
+    "innerHash": "600417beddd46c19eef84cfc565abc5415db2c2d49be22df66eccca219799229",
     "signatures": 2,
-    "ledger": 5517818,
-    "createdAt": "2026-11-02T09:45:30Z",
-    "link": "https://stellar.expert/explorer/testnet/tx/b290c110117beea448ac9ff014ed25a75b686522f62d22d53ee67d88aecdd305"
+    "ledger": 5543870,
+    "createdAt": "2026-11-03T21:56:30Z",
+    "link": "https://stellar.expert/explorer/testnet/tx/16998162c37de6edc16865613cadfcf8245c2a6fdb8a91d825c50a9f60fcd913"
   },
-  "finishedAt": "2026-11-02T09:45:33.258Z"
+  "finishedAt": "2026-11-03T21:56:33.745Z"
 }
