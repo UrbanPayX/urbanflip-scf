@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { StrKey } from '@stellar/stellar-sdk';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -197,7 +197,8 @@ describe('HTTP API: Urbanflip waterfall', () => {
     expect((await post(base, '/v1/distributions/UF-8/sdp-files', { usdcFunded: '1.00' })).status).toBe(404);
   });
 
-  it('replays a real deal over HTTP', async () => {
+  // fixtures/real is private (investor payout data); skipped on the public repo
+  it.skipIf(!existsSync(join(__dirname, '../fixtures/real/orense-9.json')))('replays a real deal over HTTP', async () => {
     const base = await start();
     const fx = JSON.parse(readFileSync(join(__dirname, '../fixtures/real/orense-9.json'), 'utf8')) as Record<string, unknown>;
     const res = await post(base, '/v1/deals/orense-9/waterfall/replay', fx);
