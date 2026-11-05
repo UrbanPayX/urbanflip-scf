@@ -69,28 +69,28 @@ CHANNEL_SECRET=S... STATIC_GATE_ALLOW='[["inv-1","*"]]' cargo run
 | `STELLAR_NETWORK` | `testnet` | `mainnet`/`public` switches Horizon and passphrase |
 | `HORIZON_URL` | testnet Horizon | override (testnet only; mainnet uses horizon.stellar.org) |
 | `NETWORK_PASSPHRASE` | per network | override |
-| `CHANNEL_SECRET` | — | funds issuers, sponsors investors, pays fees (required for on-chain routes) |
-| `STATE_PATH` | — | JSON state snapshot; without it, state is in memory only. An exclusive OS lock on `<state>.lock` makes a second instance on the same file refuse to start; the lock dies with the process, so a crash never leaves it stale |
-| `STATE_KEY` | — | 64 hex chars; required with `STATE_PATH`. Seals issuer and wallet secrets (ChaCha20-Poly1305). A wrong key stops startup; state is never silently replaced |
-| `AUDIT_PATH` | — | append-only JSONL audit log |
+| `CHANNEL_SECRET` | - | funds issuers, sponsors investors, pays fees (required for on-chain routes) |
+| `STATE_PATH` | - | JSON state snapshot; without it, state is in memory only. An exclusive OS lock on `<state>.lock` makes a second instance on the same file refuse to start; the lock dies with the process, so a crash never leaves it stale |
+| `STATE_KEY` | - | 64 hex chars; required with `STATE_PATH`. Seals issuer and wallet secrets (ChaCha20-Poly1305). A wrong key stops startup; state is never silently replaced |
+| `AUDIT_PATH` | - | append-only JSONL audit log |
 | `GATE_PROVIDER` | `static` | `static` or `urbanflip` |
 | `STATIC_GATE_ALLOW` | `[]` | `[[investorId, dealId or "*"], ...]` |
-| `URBANFLIP_GATE_URL`, `URBANFLIP_GATE_TOKEN` | — | KYC decision endpoint for `GATE_PROVIDER=urbanflip` |
+| `URBANFLIP_GATE_URL`, `URBANFLIP_GATE_TOKEN` | - | KYC decision endpoint for `GATE_PROVIDER=urbanflip` |
 | `HOME_DOMAIN` | `urbanflip.io` | issuer `home_domain` (SEP-1) |
-| `COLLECTION_ADDRESS`, `USDC_CODE`, `USDC_ISSUER` | —, `USDC`, — | crypto-subscription collection |
+| `COLLECTION_ADDRESS`, `USDC_CODE`, `USDC_ISSUER` | -, `USDC`, - | crypto-subscription collection |
 | `SPV_IBAN` | sample | default off-ramp target |
-| `SDP_BASE_URL`, `SDP_TOKEN` | — | self-hosted SDP; without them, `sdp/disburse` returns `501` and files come from `payouts/split` |
+| `SDP_BASE_URL`, `SDP_TOKEN` | - | self-hosted SDP; without them, `sdp/disburse` returns `501` and files come from `payouts/split` |
 | `BIND_ADDR` | `0.0.0.0:8080` | listen address |
-| `API_TOKENS` | — | staff tokens: `[{"name", "role", "sha256"}]` (see [Access control](#access-control)). Without any, startup is refused |
-| `ALLOW_UNAUTHENTICATED` | — | `true` serves every route without a token. Local development only |
+| `API_TOKENS` | - | staff tokens: `[{"name", "role", "sha256"}]` (see [Access control](#access-control)). Without any, startup is refused |
+| `ALLOW_UNAUTHENTICATED` | - | `true` serves every route without a token. Local development only |
 | `SESSION_TTL_SECS` | `900` | lifetime of investor session tokens |
-| `WIDGET_DIR` | — | built wallet widget (`wallet-onboarding/web/dist`), served at `/widget/` |
+| `WIDGET_DIR` | - | built wallet widget (`wallet-onboarding/web/dist`), served at `/widget/` |
 | `WIDGET_FRAME_ANCESTORS` | none | origins allowed to frame the widget, e.g. `https://app.urbanflip.io` |
 | `BRIDGE_API_URL` | `https://api.sandbox.bridge.xyz/v0` | Bridge API; a URL containing `sandbox` turns on simulated deposits. Production: `https://api.bridge.xyz/v0` |
-| `BRIDGE_API_KEY`, `BRIDGE_CUSTOMER_ID` | — | Bridge API key (`sk-test-...` in sandbox) and Urbanflip's KYB-approved Bridge customer. Without them the ramp routes return `501` |
-| `BRIDGE_WEBHOOK_PUBLIC_KEY` | — | PEM public key of the Bridge webhook endpoint (enables `/v1/webhooks/bridge`) |
-| `COLLECTION_SECRET` | — | collection account key, so live off-ramp deposits are signed by the backend; must match `COLLECTION_ADDRESS`. Without it, pay the batch yourself and register the tx hash |
-| `DISTRIBUTION_ADDRESS` | — | the SDP distribution wallet that Bridge funding delivers USDC to |
+| `BRIDGE_API_KEY`, `BRIDGE_CUSTOMER_ID` | - | Bridge API key (`sk-test-...` in sandbox) and Urbanflip's KYB-approved Bridge customer. Without them the ramp routes return `501` |
+| `BRIDGE_WEBHOOK_PUBLIC_KEY` | - | PEM public key of the Bridge webhook endpoint (enables `/v1/webhooks/bridge`) |
+| `COLLECTION_SECRET` | - | collection account key, so live off-ramp deposits are signed by the backend; must match `COLLECTION_ADDRESS`. Without it, pay the batch yourself and register the tx hash |
+| `DISTRIBUTION_ADDRESS` | - | the SDP distribution wallet that Bridge funding delivers USDC to |
 
 The state file is written atomically (temp file, fsync, rename, mode 0600)
 after every mutation. Back it up together with `STATE_KEY`, but store them
@@ -130,8 +130,8 @@ strings (up to 7 decimals).
 | route | body | result |
 | --- | --- | --- |
 | `POST /v1/deals/{deal}/provision-issuer` | `{"asset_code"?: "UFMADRID1"}` (1-12 alphanumerics; default derived from the deal id) | `{dealId, assetCode, issuer, txHash}`. Repeating returns the same issuer with `idempotent: true`. `422` bad code (nothing submitted), `409` provisioning already running, `502` outcome unknown (retry adopts the issuer if it landed) |
-| `POST /v1/deals/{deal}/authorize/{investor}` | — | `{authorized, decision, txHash}`. `403` gate refused, `503` gate unreachable; both are audited |
-| `POST /v1/deals/{deal}/freeze/{investor}` | — | `{frozen, asset, txHash}` (revokes trustline authorization) |
+| `POST /v1/deals/{deal}/authorize/{investor}` | - | `{authorized, decision, txHash}`. `403` gate refused, `503` gate unreachable; both are audited |
+| `POST /v1/deals/{deal}/freeze/{investor}` | - | `{frozen, asset, txHash}` (revokes trustline authorization) |
 | `POST /v1/deals/{deal}/clawback/{investor}` | `{"amount"?: "100.00", "clawback_ref"?: "cb-1", "investor_address"?: "G..."}` | `{clawedBack, address, clawbackRef, txHash}`. With no amount, claws back the whole balance (`409` if nothing is held). An explicit amount requires `clawback_ref` (`422` without): the clawback is recorded with its tx hash before submission, so retrying with the same ref after a `502` resolves it by hash and never claws twice (`idempotent: true` once done; `409` while the lost tx may still land, or if the ref was used for a different clawback). `investor_address` is only a cross-check (`422` if it differs) |
 
 ### D2: onboarding
@@ -148,12 +148,12 @@ For crypto-native investors with their own wallet. The embeddable widget
 
 | route | body | result |
 | --- | --- | --- |
-| `POST /v1/investors/{investor}/session` | — | `201 {session_token, expires_at}` (`operations`) |
+| `POST /v1/investors/{investor}/session` | - | `201 {session_token, expires_at}` (`operations`) |
 | `POST /v1/investors/{investor}/external-wallet/challenge` | `{"address": "G..."}` | `{challenge_xdr, network_passphrase, expires_at}`: a SEP-10-style tx (sequence 0, so it can never be submitted) for the wallet to sign |
 | `POST /v1/investors/{investor}/external-wallet/verify` | `{"signed_xdr"}` | `{linked, address}`. The challenge is single-use and expires in 5 minutes (`410`: request a new one), and must carry a valid signature by the claimed address (`422` otherwise). `409` if the investor already has an embedded wallet or a different linked wallet |
 | `POST /v1/investors/{investor}/external-wallet/trustline` | `{"deal_id"}` | `{status: "ready"}` if the trustline exists, else `{status: "sign", xdr, network_passphrase, expires_at}`: a channel-sponsored trustline (and account, if new) for the wallet to sign |
 | `POST /v1/investors/{investor}/external-wallet/trustline/submit` | `{"deal_id", "signed_xdr"}` | `{status: "submitted", trustline_tx_hash}`. Only the tx built for this investor and deal, signed by their wallet, is fee-bumped by the channel and submitted; the investor spends no XLM |
-| `GET /widget/{file}` | — | the built widget, public, with `Content-Security-Policy: frame-ancestors <WIDGET_FRAME_ANCESTORS>` |
+| `GET /widget/{file}` | - | the built widget, public, with `Content-Security-Policy: frame-ancestors <WIDGET_FRAME_ANCESTORS>` |
 
 A linked wallet becomes the investor's address for authorization, issuance
 and clawback; `onboard` (embedded wallet) is refused for them.
@@ -163,13 +163,13 @@ and clawback; `onboard` (embedded wallet) is refused for them.
 | route | body | result |
 | --- | --- | --- |
 | `POST /v1/subscriptions/fiat` | `{deal_id, investor_id, subscription_ref, amount, bank_ref}` | `201`. `409` if the ref is already used (fiat or crypto) |
-| `POST /v1/subscriptions/crypto/expect` | `{deal_id, investor_id, subscription_ref, eur_amount, usdc_amount, quote_ref?}` (the EUR commitment and its USDC quote; the implied rate must be within 0.5–2 USDC per EUR) | `201 {expected: {memo, collection_address, ...}}`. The memo `UF-<deal>-<ref>` must fit 28 bytes and be unique across subscriptions (`422`). `409` if the ref is already used. Each payment tx reconciles at most one subscription |
-| `POST /v1/subscriptions/crypto/reconcile` | — | Reads payments to the collection address from Horizon; `{reconciled: [{subscriptionRef, state}]}` |
+| `POST /v1/subscriptions/crypto/expect` | `{deal_id, investor_id, subscription_ref, eur_amount, usdc_amount, quote_ref?}` (the EUR commitment and its USDC quote; the implied rate must be within 0.5-2 USDC per EUR) | `201 {expected: {memo, collection_address, ...}}`. The memo `UF-<deal>-<ref>` must fit 28 bytes and be unique across subscriptions (`422`). `409` if the ref is already used. Each payment tx reconciles at most one subscription |
+| `POST /v1/subscriptions/crypto/reconcile` | - | Reads payments to the collection address from Horizon; `{reconciled: [{subscriptionRef, state}]}` |
 | `POST /v1/deals/{deal}/offramp/build` | `{"target_iban"?, "max_slice_usdc"?: "50000"}` | `{instruction: {batch, subscription_refs, total_usdc, eur_committed, slices, status}}` covering the reconciled collections no executed batch has converted. Rebuilding replaces a still-pending batch; a batch awaiting a top-up blocks |
 | `POST /v1/deals/{deal}/offramp/complete` | `{"bank_ref": "SEPA-1", "eur_received": "998.00"}` | Records the conversion. `EXECUTED` if the EUR covers the commitments (its subscriptions become eligible), else `AWAITING_TOP_UP` with `shortfallEur`. `fx_result_eur` is received minus committed |
 | `POST /v1/deals/{deal}/offramp/top-up` | `{"bank_ref": "TOPUP-1", "eur_amount": "2.00"}` | Urbanflip covers a shortfall; the batch executes once it is covered. Repeating a `bank_ref` changes nothing |
-| `GET /v1/deals/{deal}/eligibility` | — | Per-subscription eligibility for issuance |
-| `POST /v1/subscriptions/{ref}/settle` | — | Issues units (EUR principal, for either rail): `{settlement: {units, txHash, ...}}`. Repeating returns `idempotent: true`. `412` not eligible, `409` trustline not ready / in flight / may still land, `502` outcome unknown (retry resolves by hash) |
+| `GET /v1/deals/{deal}/eligibility` | - | Per-subscription eligibility for issuance |
+| `POST /v1/subscriptions/{ref}/settle` | - | Issues units (EUR principal, for either rail): `{settlement: {units, txHash, ...}}`. Repeating returns `idempotent: true`. `412` not eligible, `409` trustline not ready / in flight / may still land, `502` outcome unknown (retry resolves by hash) |
 
 ### D5: Bridge ramp
 
@@ -183,10 +183,10 @@ sandbox sends no webhooks).
 | --- | --- | --- |
 | `POST /v1/deals/{deal}/offramp/bridge-route` | the SPV account: `{iban, bic?, country, account_owner_name, address: {street_line_1, city, postal_code?, country}}` (ISO alpha-3 countries) | `{route}`: the SPV IBAN as a Bridge external account and a Stellar USDC liquidation address that pays it in EUR by SEPA. Idempotent; `409` for a different IBAN |
 | `POST /v1/deals/{deal}/offramp/send` | `{"deposit_tx_hash"?}` | Sends the pending batch's USDC to the liquidation address, once: sandbox simulates the deposit; live, the backend pays from the collection account (recorded by tx hash before submitting, resolved by hash after a timeout) or registers a deposit you made. A sent batch can no longer be rebuilt |
-| `POST /v1/deals/{deal}/offramp/sync` | — | Reads Bridge's drain: `202` while it's in progress; once paid out, completes the batch with the EUR actually received (receipt's outgoing amount) and the SEPA reference, so a shortfall waits for a top-up. `409` if Bridge returned or refunded it |
-| `POST /v1/deals/{deal}/funding/bridge-account` | — | `{funding_account}`: a virtual EUR IBAN whose deposits Bridge converts to USDC on Stellar for `DISTRIBUTION_ADDRESS`. Treasury wires the deal's distribution EUR there |
+| `POST /v1/deals/{deal}/offramp/sync` | - | Reads Bridge's drain: `202` while it's in progress; once paid out, completes the batch with the EUR actually received (receipt's outgoing amount) and the SEPA reference, so a shortfall waits for a top-up. `409` if Bridge returned or refunded it |
+| `POST /v1/deals/{deal}/funding/bridge-account` | - | `{funding_account}`: a virtual EUR IBAN whose deposits Bridge converts to USDC on Stellar for `DISTRIBUTION_ADDRESS`. Treasury wires the deal's distribution EUR there |
 | `POST /v1/deals/{deal}/funding/simulate-deposit` | `{amount, reference?}` | sandbox only |
-| `POST /v1/deals/{deal}/funding/sync` / `GET .../funding` | — | `{funding: {eur_deposited, usdc_received, deposits}}` from Bridge's activity |
+| `POST /v1/deals/{deal}/funding/sync` / `GET .../funding` | - | `{funding: {eur_deposited, usdc_received, deposits}}` from Bridge's activity |
 | `POST /v1/webhooks/bridge` | Bridge event | Public, but verified: RSA signature over SHA256(SHA256(`<t>.<body>`)) with `BRIDGE_WEBHOOK_PUBLIC_KEY`, 10-minute window, duplicates ignored. Triggers the matching sync |
 
 With funding synced, `sdp/disburse` can omit `usdc_funded` and pays exactly
@@ -200,10 +200,10 @@ refused. One funding account per deal: it assumes one distribution per deal.
 | `POST /v1/deals/{deal}/ledger` | `{positions: [{investor_id, email, wallet_address?, principal}]}` | `201` |
 | `POST /v1/deals/{deal}/distributions` | `{outcome: {principal_repayment, performance_interest}}` | Exact pro-rata schedule; rows always sum to the totals |
 | `POST /v1/deals/{deal}/distributions/replay` | `{outcome, historical: [{investor_id, amount}], policy?}` | `{match, diffs}` against a historical payout |
-| `POST /v1/deals/{deal}/payouts/split?usdc_funded=39060.00` | — | EUR worklists per rail, the bank (SEPA) file, and `onChainEurToConvert` for treasury. With `usdc_funded`, also the USDC conversion and SDP files |
+| `POST /v1/deals/{deal}/payouts/split?usdc_funded=39060.00` | - | EUR worklists per rail, the bank (SEPA) file, and `onChainEurToConvert` for treasury. With `usdc_funded`, also the USDC conversion and SDP files |
 | `POST /v1/deals/{deal}/sdp/disburse` | `{"usdc_funded"?: "39060.00"}` (USDC bought for the on-chain cohort, at most 2 decimals; omitted = the Bridge-confirmed funding) | Splits the USDC pro-rata to the EUR owed and creates each SDP file once (`idempotent: true` on repeat). `409` if a file already sent would now differ, in USDC or in the EUR behind it (reconcile in the SDP first) |
 | `POST /v1/trustline-check` | `{asset_code, asset_issuer, addresses: [...]}` | `Ready` / `Missing` / `Unauthorized` / `NoAccount` per address |
-| `GET /v1/audit` | — | Last 50 audit events |
+| `GET /v1/audit` | - | Last 50 audit events |
 
 ## Testing
 

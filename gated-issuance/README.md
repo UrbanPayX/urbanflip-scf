@@ -1,6 +1,6 @@
 # gated-issuance
 
-Compliance-gated asset issuance layer for Stellar — a standalone implementation of
+Compliance-gated asset issuance layer for Stellar - a standalone implementation of
 **SCF #45 Tranche 1, Deliverable 1** (Urbanflip: "Compliance-Gated Issuance Layer").
 
 The design requirement this repo answers: **the issuance core is generic; Urbanflip
@@ -31,7 +31,7 @@ anything Urbanflip-specific.
 ## What it enforces
 
 - **Per-deal issuer provisioning**: `AUTH_REQUIRED | AUTH_REVOCABLE | AUTH_CLAWBACK_ENABLED`
-  set in the same transaction that creates the issuer account — strictly before any
+  set in the same transaction that creates the issuer account - strictly before any
   trustline can exist (clawback cannot be enabled retroactively; CAP-35). A
   self-check (`assertProvisioningInvariant`) rejects any provisioning envelope that
   contains trustline or payment operations.
@@ -48,7 +48,7 @@ anything Urbanflip-specific.
   gate first. `rejected` and `pending` are treated identically (fail closed), as are
   unreachable gates.
 - **Protocol-level rejection**: with the flags in place, a payment to an
-  unauthorized trustline fails with `op_not_authorized` — enforced by the Stellar
+  unauthorized trustline fails with `op_not_authorized` - enforced by the Stellar
   protocol, not by this service.
 - **Offboarding**: `freeze()` (revoke authorization; blocks the position) and
   `clawback()` (reclaim balance), both audited. Clawback is exactly-once per caller-supplied
@@ -100,7 +100,7 @@ Authorization: Bearer {URBANFLIP_GATE_TOKEN}
 Anything else (4xx/5xx after retries, timeout, malformed body) raises
 `GateUnavailableError` and the core **fails closed**: no authorization transaction
 is built or submitted. KYC logic, scoring, and professional-status rules stay
-entirely inside Urbanflip — this layer never sees them.
+entirely inside Urbanflip - this layer never sees them.
 
 Wire it up via `src/config.ts` (`GATE_PROVIDER=urbanflip`) or directly:
 
@@ -139,10 +139,10 @@ memory: idempotent within one process, lost on restart.
 | `TransactionRejectedError` | Horizon 400 with `extras.result_codes.transaction` (or SEP-29 memo refusal before sending): the tx did **not** apply | safe to rebuild |
 | `TransactionOutcomeUnknownError` (`.hash`) | 504, timeout, dropped connection, any error without result codes: the tx **may still apply** until its `maxTime` | resolve by hash first |
 
-`TxSubmitter` also implements the `LedgerLookup` port — `transactionOutcome(hash)`
-(`SUCCESS` / `FAILED` / `NOT_FOUND`) and `accountFlags(address)` — which provisioning,
-settlement and clawback use to resolve unknown outcomes, and the `BalanceLookup` port —
-`assetBalance(address, asset)` — which full-balance clawbacks use.
+`TxSubmitter` also implements the `LedgerLookup` port - `transactionOutcome(hash)`
+(`SUCCESS` / `FAILED` / `NOT_FOUND`) and `accountFlags(address)` - which provisioning,
+settlement and clawback use to resolve unknown outcomes, and the `BalanceLookup` port -
+`assetBalance(address, asset)` - which full-balance clawbacks use.
 
 **Provisioning** (`IssuerProvisioner`, store: `IssuerStore`):
 
@@ -184,7 +184,7 @@ await authorizer.clawback(deal, issuerKp, holder, { clawbackId: 'offboard-inv-00
 - The same id with a different deal, asset, issuer, holder or amount → `ClawbackIdConflictError`
   (amounts compare at 7 decimals, so `'5'` and `'5.0000000'` are the same clawback).
 - Full-balance mode reads the holder's balance (`BalanceLookup`) and claws back all of it.
-  With nothing left — the repeat of a completed full-balance clawback, or no trustline —
+  With nothing left - the repeat of a completed full-balance clawback, or no trustline -
   it throws `NothingToClawBackError` instead of submitting a zero clawback. Without an id,
   that is its only retry protection (plus the issuer's sequence number while a first attempt
   is still in flight); pass an id for exact-once semantics and by-hash resolution.
@@ -243,7 +243,7 @@ tampered record or a corrupt file throws instead of starting empty.
 | SCF D1 criterion | Where |
 | --- | --- |
 | Issuer/asset resolve with verified domain (SEP-1) | `IssuerProvisioner` (home_domain) + `generateStellarToml`; live test asserts toml is emitted |
-| Non-KYC wallet rejected at protocol level (`op_not_authorized`); KYC-approved wallet authorized and receiving | `test/live-testnet-lifecycle.test.ts` — asserted against real testnet result codes |
+| Non-KYC wallet rejected at protocol level (`op_not_authorized`); KYC-approved wallet authorized and receiving | `test/live-testnet-lifecycle.test.ts` - asserted against real testnet result codes |
 | Authorization service API documented; integration tests passing with >=90% coverage on the authorization path | This README + `test/authorization-gate.test.ts`, `test/trustline-authorizer-errors.test.ts`, `test/static-gate.test.ts`, `test/urbanflip-gate.test.ts`, `test/tx-submitter.test.ts`, `test/clawback-store.test.ts`, `test/provisioning-structure.test.ts`, `test/provisioning-idempotency.test.ts`, `test/settlement-idempotency.test.ts`, `test/clawback-idempotency.test.ts`, `test/state-lock.test.ts`; coverage gate below |
 | Clawback and freeze flows executed and verifiable | `TrustlineAuthorizer.freeze/clawback`; executed on testnet in demo and live test |
 
@@ -303,11 +303,11 @@ and is not excluded from the count.
 
 ## Layout
 
-- `src/gate/` — the `ComplianceGate` port and its two adapters
-- `src/issuance/` — issuer provisioning, gate-gated trustline authorization, settlement, asset-code rules
-- `src/store/` — issuer, settlement and clawback stores (memory + JSON file), `SecretBox` sealing, the state-directory lock
-- `src/stellar/` — `TxSubmitter`: submission with rejected/unknown classification, lookups by hash
-- `src/sep1/` — stellar.toml generation and publication
-- `src/audit/` — JSONL audit log
-- `src/testkit/` — investor-side helpers and the full lifecycle runner (demo/test only)
-- `test/` — offline suites + opt-in live testnet suite (`RUN_LIVE=1`)
+- `src/gate/` - the `ComplianceGate` port and its two adapters
+- `src/issuance/` - issuer provisioning, gate-gated trustline authorization, settlement, asset-code rules
+- `src/store/` - issuer, settlement and clawback stores (memory + JSON file), `SecretBox` sealing, the state-directory lock
+- `src/stellar/` - `TxSubmitter`: submission with rejected/unknown classification, lookups by hash
+- `src/sep1/` - stellar.toml generation and publication
+- `src/audit/` - JSONL audit log
+- `src/testkit/` - investor-side helpers and the full lifecycle runner (demo/test only)
+- `test/` - offline suites + opt-in live testnet suite (`RUN_LIVE=1`)

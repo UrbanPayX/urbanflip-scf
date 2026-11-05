@@ -1,6 +1,6 @@
 # distribution-engine
 
-**SCF #45 Tranche 1, Deliverable 3** — Pro-rata distribution engine.
+**SCF #45 Tranche 1, Deliverable 3** - Pro-rata distribution engine.
 
 Computes per-investor **EUR** settlements with **Urbanflip's participative-loan
 waterfall** (fixed tranche + pro-rata share of the variable profit, less success
@@ -17,12 +17,12 @@ unit at the recorded ledger's precision (10^-2 for EUR bank records). There
 are no floats in any computation path. Interest allocation floors each share
 and redistributes the dust deterministically under an explicit policy:
 
-- `largest-remainder` — +1 unit to the largest fractional remainders,
+- `largest-remainder` - +1 unit to the largest fractional remainders,
   ties broken by investorId (deterministic across runs and replays);
-- `last-absorbs` — dust lands on the final position (the convention some
+- `last-absorbs` - dust lands on the final position (the convention some
   legacy bank ledgers used, needed to replay older deals).
 
-Either way, **the sum of rows always equals the outcome totals exactly** —
+Either way, **the sum of rows always equals the outcome totals exactly** -
 there is no rounding drift, by construction and by test. Amounts finer than
 the computation precision (e.g. `8.005` at `decimals: 2`) are refused with an
 error, never truncated.
@@ -74,7 +74,7 @@ const files = emitSdpFiles(conversion);                         // CSV amounts =
 ```
 
 - `convertOnChain` refuses: `usdcFunded` with more than 2 decimals; an implied
-  rate outside **0.5–2 USDC per EUR** (catches swapped or mistyped amounts);
+  rate outside **0.5-2 USDC per EUR** (catches swapped or mistyped amounts);
   a payout that would round to 0.00 USDC; rows without a wallet address
   (outside `onChainCohort`, when given, rows are reported in `otherRail`
   instead of converted); with `onlyAddresses`, any converted row outside the set
@@ -149,7 +149,7 @@ branches (143/144), 100% functions (67/67), 100% lines (225/225)**
 
 ## Production notes (out of scope here)
 
-- Actual SDP deployment: **Tranche 2 (D4)** — this engine's USDC files are the
+- Actual SDP deployment: **Tranche 2 (D4)** - this engine's USDC files are the
   direct input to that deliverable. Buying the USDC (`usdcFunded`) is a
   treasury step outside the engine.
 - The trustline pre-check complements D1's authorization service: D1 guarantees

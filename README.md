@@ -1,4 +1,4 @@
-# Urbanflip × Stellar — SCF #45 build
+# Urbanflip × Stellar - SCF #45 build
 
 [![ci](https://github.com/UrbanPayX/urbanflip-scf/actions/workflows/ci.yml/badge.svg)](https://github.com/UrbanPayX/urbanflip-scf/actions/workflows/ci.yml)
 
@@ -49,7 +49,7 @@ before any trustline exists ([issuer account](https://stellar.expert/explorer/te
 | [`wallet-onboarding/`](wallet-onboarding) | D2: Privy embedded wallets, Stellar Wallets Kit widget, sponsorship (CAP-33), fee-bump pipeline (TypeScript) |
 | [`distribution-engine/`](distribution-engine) | D3: Urbanflip's settlement waterfall, pro-rata payouts, SDP payment files (TypeScript) |
 | [`investor-rails/`](investor-rails) | Fiat/USDC subscription and payout rails feeding D4/D5 (TypeScript) |
-| [`urbanflip-backend/`](urbanflip-backend) | One HTTP service (Rust, axum) wiring D1–D3, the rails, the Bridge ramp and the SDP export |
+| [`urbanflip-backend/`](urbanflip-backend) | One HTTP service (Rust, axum) wiring D1-D3, the rails, the Bridge ramp and the SDP export |
 
 ## Running the tests
 

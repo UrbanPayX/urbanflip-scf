@@ -1,9 +1,9 @@
 # wallet-onboarding
 
-**SCF #45 Tranche 1, Deliverable 2** — Invisible-crypto wallet onboarding.
+**SCF #45 Tranche 1, Deliverable 2** - Invisible-crypto wallet onboarding.
 
 Investors register with the email they already have; a wallet appears; their
-Stellar account and trustlines are created — and they hold **zero XLM at every
+Stellar account and trustlines are created - and they hold **zero XLM at every
 step**. The channel (operations) account sponsors all reserves (CAP-33) and
 pays all fees (fee-bump). Same pattern as D1: the core depends on ports, and
 concrete providers are adapters.
@@ -31,7 +31,7 @@ concrete providers are adapters.
                     └──────────────────────────────────────────────┘
                     SponsorService builds the CAP-33 envelopes:
                       [beginSponsoring(investor),
-                       createAccount(investor, 0 XLM)   — or changeTrust(source: investor)
+                       createAccount(investor, 0 XLM)   - or changeTrust(source: investor)
                        endSponsoring(source: investor)]  ← must be investor-sourced
 ```
 
@@ -63,7 +63,7 @@ XLM either. See [Wallets Kit widget](#wallets-kit-widget-external-wallets).
   must therefore carry a bounded timeout.
 - **Re-runnable onboarding**: `provisionInvestorAccount` creates the account only
   when Horizon returns 404; `openSponsoredTrustline` skips a trustline that
-  exists for the exact asset (code AND issuer — idempotency keys include the
+  exists for the exact asset (code AND issuer - idempotency keys include the
   issuer too). Skipped steps return `alreadyExisted: true` and no `txHash`. A
   second deal, a retry after an unknown outcome, or a restart is safe.
 - **Zero-XLM by construction**: accounts are created with `startingBalance: 0`
@@ -89,7 +89,7 @@ submitted) and opens `UF42` from a second issuer as a distinct trustline.
 
 `createOnboarding({ horizonUrl, networkPassphrase, channelSecret, ... })`.
 Reads (`LedgerReader`: `loadAccountSnapshot`, `transactionOutcome`) default to
-the submitter — `TxSubmitter` implements both ports; a custom `submitter` must
+the submitter - `TxSubmitter` implements both ports; a custom `submitter` must
 implement `LedgerReader` too or come with `ledger`, otherwise construction
 fails. The idempotency ledger still defaults to in-memory; the chain checks
 keep onboarding correct across restarts, but production should persist it.
