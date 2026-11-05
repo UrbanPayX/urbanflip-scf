@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,14 +14,20 @@ import {
 
 /**
  * D3.2 evidence: replays the three real deals in fixtures/real and writes
- * evidence/d3-replay-report.md (for reviewers) and .json (machine-readable).
- * Deterministic: the same fixtures always give the same files.
+ * evidence/d3-replay-report.md. Deterministic: the same fixtures always give
+ * the same file.
  *
- *   npm run replay:report
+ *   npm run replay:report              full report, per investor (private repo only)
+ *   npm run replay:report -- --public  per-deal aggregates + SHA-256 of each
+ *                                      private input file (public evidence)
+ *
+ * fixtures/real holds real payout data (pseudonymized investor ids) and is not
+ * part of the public repo; without it this tool has nothing to replay.
  */
 
 const here = dirname(fileURLToPath(import.meta.url));
 const DEALS = ['velazquez-87', 'orense-9', 'general-peron-26'];
+const PUBLIC = process.argv.includes('--public');
 
 interface Fixture {
   source: { deal: string; export: string; pseudonymization: string; terms: string; notes: string[] };
@@ -64,8 +71,10 @@ function main(): void {
       `given ${runs.reduce((a, r) => a + r.report.adjustments.length, 0)} paid amounts that depart from the rule, each declared as an adjustment with its reason, and ` +
       `${runs.reduce((a, r) => a + r.report.unrecorded.length, 0)} declared position with no payout record (see Exceptions).`,
     '',
-    'Reproduce: `cd distribution-engine && npm test` (test/waterfall.test.ts) or `npm run replay:report` (writes this file). ' +
-      'Data: `fixtures/real/*.json`; engine: `src/compute/waterfall.ts`, `src/compute/waterfall-replay.ts`; API: `POST /v1/deals/{dealId}/waterfall/replay` (api/openapi.yaml).',
+    PUBLIC
+      ? 'The engine and replay logic are public: `src/compute/waterfall.ts`, `src/compute/waterfall-replay.ts`, API `POST /v1/deals/{dealId}/waterfall/replay` (api/openapi.yaml); `npm test` replays synthetic deals everywhere and skips the real-deal suite unless the private `fixtures/real` is present. The input files below are private; their SHA-256 digests pin exactly what this report was computed from.'
+      : 'Reproduce: `cd distribution-engine && npm test` (test/waterfall.test.ts) or `npm run replay:report` (writes this file). ' +
+        'Data: `fixtures/real/*.json`; engine: `src/compute/waterfall.ts`, `src/compute/waterfall-replay.ts`; API: `POST /v1/deals/{dealId}/waterfall/replay` (api/openapi.yaml).',
     '',
     '| Deal | Payout date | Positions | Settlements compared | Amounts compared | Differences | Net paid (recorded) | Net (computed) |',
     '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |',
@@ -115,21 +124,25 @@ function main(): void {
           `| ${LABEL[c]} | ${eur(report.recordedTotals[c])} | ${eur(report.computedTotals[c])} | ${formatCents(report.computedTotals[c] - report.recordedTotals[c])} |`,
       ),
       '',
-      '<details><summary>Per investor (recorded = computed for every component)</summary>',
-      '',
-      '| Investor | Start | Principal | Fixed | Variable | Fee | Withholding | Net paid | Net computed | Difference |',
-      '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
-      ...fx.recorded.map((rec) => {
-        const row = report.result.rows.find((r) => r.investorId === rec.investorId)!;
-        const start = deal.positions.find((p) => p.investorId === rec.investorId)!.startDate;
-        const mark = row.adjustments.length > 0 ? ' *' : '';
-        return `| ${rec.investorId}${mark} | ${start} | ${eur(row.principalCents)} | ${eur(row.fixedInterestCents)} | ${eur(row.variableInterestCents)} | ${eur(row.feeCents)} | ${eur(row.withholdingCents)} | ${eur(cents(rec.net))} | ${eur(row.netCents)} | ${formatCents(row.netCents - cents(rec.net))} |`;
-      }),
-      '',
-      '\\* manual adjustment, see Exceptions.',
-      '',
-      '</details>',
-      '',
+      ...(PUBLIC
+        ? []
+        : [
+            '<details><summary>Per investor (recorded = computed for every component)</summary>',
+            '',
+            '| Investor | Start | Principal | Fixed | Variable | Fee | Withholding | Net paid | Net computed | Difference |',
+            '| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
+            ...fx.recorded.map((rec) => {
+              const row = report.result.rows.find((r) => r.investorId === rec.investorId)!;
+              const start = deal.positions.find((p) => p.investorId === rec.investorId)!.startDate;
+              const mark = row.adjustments.length > 0 ? ' *' : '';
+              return `| ${rec.investorId}${mark} | ${start} | ${eur(row.principalCents)} | ${eur(row.fixedInterestCents)} | ${eur(row.variableInterestCents)} | ${eur(row.feeCents)} | ${eur(row.withholdingCents)} | ${eur(cents(rec.net))} | ${eur(row.netCents)} | ${formatCents(row.netCents - cents(rec.net))} |`;
+            }),
+            '',
+            '\\* manual adjustment, see Exceptions.',
+            '',
+            '</details>',
+            '',
+          ]),
     );
   }
 
@@ -137,12 +150,18 @@ function main(): void {
   for (const { fx, report } of runs) {
     for (const a of report.adjustments) {
       md.push(
-        `- **${fx.source.deal}, ${a.investorId}: ${a.component}** paid ${eur(a.appliedCents)}, the rule gives ${eur(a.ruleCents)}. ${a.reason}`,
+        PUBLIC
+          ? a.ruleCents === 0n
+            ? `- **${fx.source.deal}:** a ${LABEL[a.component].toLowerCase()} set by hand at settlement for a position the rule leaves without one, entered as a declared override; the figures are kept in the private record.`
+            : `- **${fx.source.deal}:** a ${LABEL[a.component].toLowerCase()} paid ${formatCents(absCents(a.ruleCents - a.appliedCents))} EUR ${a.appliedCents < a.ruleCents ? 'below' : 'above'} the rule, entered as a declared override; the rule figure is kept beside it in the private record.`
+          : `- **${fx.source.deal}, ${a.investorId}: ${a.component}** paid ${eur(a.appliedCents)}, the rule gives ${eur(a.ruleCents)}. ${a.reason}`,
       );
     }
     for (const u of report.unrecorded) {
       md.push(
-        `- **${fx.source.deal}, ${u.investorId}: no payout record.** ${u.reason} The rule would pay net ${eur(u.computed.netCents)} (fixed interest ${eur(u.computed.fixedInterestCents)}).`,
+        PUBLIC
+          ? `- **${fx.source.deal}:** a position with no payout record in the export, declared unrecorded and excluded from the comparison.`
+          : `- **${fx.source.deal}, ${u.investorId}: no payout record.** ${u.reason} The rule would pay net ${eur(u.computed.netCents)} (fixed interest ${eur(u.computed.fixedInterestCents)}).`,
       );
     }
   }
@@ -152,17 +171,42 @@ function main(): void {
     '',
   );
 
+  if (PUBLIC) {
+    md.push(
+      '## Provenance and privacy',
+      '',
+      'Investor-level payout data is personal data and stays out of this repository: it lives in Urbanflip\'s private repo, pseudonymized per deal (HMAC-SHA256 with a salt held only by Urbanflip, so one investor cannot be linked across deals). Pseudonymized per-investor rows are available to reviewers on request.',
+      '',
+      'Each private input file this replay was computed from is pinned below; a reviewer holding the private data verifies the report by matching these digests and re-running `npm run replay:report`.',
+      '',
+      '| Private input file (fixtures/real/) | SHA-256 |',
+      '| --- | --- |',
+      ...['deals.config.json', ...DEALS.map((d) => `${d}.json`)].map(
+        (f) => `| ${f} | ${createHash('sha256').update(readFileSync(join(here, '../fixtures/real', f))).digest('hex')} |`,
+      ),
+      '',
+    );
+  }
+
   const out = join(here, '../evidence');
   writeFileSync(join(out, 'd3-replay-report.md'), md.join('\n'));
-  writeFileSync(
-    join(out, 'd3-replay-report.json'),
-    JSON.stringify(
-      runs.map(({ fx, report }) => ({ deal: fx.source.deal, ...(eurJson(summary(report)) as object) })),
-      null,
-      2,
-    ) + '\n',
+  if (!PUBLIC) {
+    writeFileSync(
+      join(out, 'd3-replay-report.json'),
+      JSON.stringify(
+        runs.map(({ fx, report }) => ({ deal: fx.source.deal, ...(eurJson(summary(report)) as object) })),
+        null,
+        2,
+      ) + '\n',
+    );
+  }
+  console.log(
+    `${values} amounts across ${settlements} settlements reproduced to the cent -> ${join(out, PUBLIC ? 'd3-replay-report.md' : 'd3-replay-report.md + .json')}`,
   );
-  console.log(`${values} amounts across ${settlements} settlements reproduced to the cent -> ${out}`);
+}
+
+function absCents(n: bigint): bigint {
+  return n < 0n ? -n : n;
 }
 
 function summary(report: WaterfallReplayReport) {
