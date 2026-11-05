@@ -1,0 +1,31 @@
+Coverage on the authorization path
+SCF #45, Deliverable 1.3: "Authorization service API documented; integration test suite
+passing with >=90% coverage on the authorization path."
+
+Generated with: cd gated-issuance && npm run coverage   (vitest, coverage provider v8,
+reporters: text, json-summary; same command CI runs on every push)
+Gate: each file below is held to >=90% statements, branches, functions and lines on its
+own, enforced in vitest.config.ts (AUTHORIZATION_PATH); `npm run coverage` fails otherwise.
+
+File                                   % Stmts   % Branch   % Funcs   % Lines
+src/gate/compliance-gate.ts              100.00     100.00    100.00    100.00
+src/gate/static-gate.ts                  100.00     100.00    100.00    100.00
+src/gate/urbanflip-gate.ts               100.00     100.00    100.00    100.00
+src/issuance/trustline-authorizer.ts     100.00      98.86    100.00    100.00
+src/store/clawback-store.ts              100.00     100.00    100.00    100.00
+src/issuance/in-flight.ts                100.00     100.00    100.00    100.00
+src/issuance/pending-tx.ts               100.00     100.00    100.00    100.00
+src/issuance/issuer-provisioner.ts       100.00     100.00    100.00    100.00
+src/stellar/tx-submitter.ts              100.00     100.00    100.00    100.00
+
+Summary: 9 of 9 files pass the >=90% gate on every metric. All 9 are at 100% statements,
+functions and lines; branches are at 100% on 8 of the 9, and at 98.86% on
+src/issuance/trustline-authorizer.ts.
+
+The authorization path is the code that decides and executes trustline authorization and
+offboarding: the compliance gate port with its adapters (static allowlist, Urbanflip KYC
+endpoint), TrustlineAuthorizer (authorize / freeze / clawback), the clawback journal with
+its in-flight guard, pending-transaction resolution, IssuerProvisioner (issuer flags set
+before any trustline) and TxSubmitter. The package-wide report in evidence/coverage.txt
+covers all of src/, including files outside the authorization path that are not held to
+the threshold.
