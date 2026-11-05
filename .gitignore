@@ -19,5 +19,9 @@ SCF45_Paquete_Evidencias_T1.docx
 *.xlsx
 *.xls
 
+# real investor payout fixtures moved to the private repo on 2026-11-05;
+# public CI replays the synthetic fixtures only
+distribution-engine/fixtures/real/
+
 # office lock files
 .~lock.*#
